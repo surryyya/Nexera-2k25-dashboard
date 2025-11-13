@@ -6,17 +6,14 @@
     <title>Symphony '25 - Symposium Dashboard</title>
     <link rel="stylesheet" href="style.css">
 
-    <!-- Firebase SDK scripts -->
-    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
 
-    <!-- Your Firebase Configuration -->
     <script src="firebase-config.js"></script>
 </head>
 
 <body>
-    <!-- Login Page -->
     <div id="loginPage" class="login-page">
         <div class="login-container">
             <div class="login-left">
@@ -39,17 +36,23 @@
                     <h2>Welcome Back</h2>
                     <p class="login-subtitle">Sign in to access the dashboard</p>
                     <form id="loginForm">
+
                         <div class="form-group">
                             <label class="form-label">College Email</label>
                             <input type="email" id="emailInput" class="form-control" placeholder="yourname@cit.edu.in" required>
                             <div id="emailError" class="error-message"></div>
                         </div>
+
                         <div class="form-group">
                             <label class="form-label">Password</label>
                             <input type="password" id="passwordInput" class="form-control" placeholder="Enter your password" required>
                         </div>
-                        <button type="submit" class="btn btn--primary btn--full-width">Sign In</button>
-                    </form>
+
+                        <div id="loginErrorMessage" class="error-message" style="margin-bottom: 16px;"></div>
+
+                        <button type="submit" id="loginButton" class="btn btn--primary btn--full-width">Sign In</button>
+
+                    </form> 
                     <div class="demo-users">
                         <p class="demo-title">Demo Accounts:</p>
                         <div class="demo-list">
@@ -63,9 +66,7 @@
         </div>
     </div>
 
-    <!-- Main Dashboard -->
     <div id="mainDashboard" class="dashboard" style="display: none;">
-        <!-- Sidebar -->
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-brand">
@@ -120,9 +121,7 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
         <div class="main-content">
-            <!-- Header -->
             <header class="header">
                 <div class="header-left">
                     <h1 class="header-title">Symphony '25 Symposium</h1>
@@ -158,11 +157,9 @@
                 </div>
             </header>
 
-            <!-- Page Content -->
             <div id="pageContent" class="page-content"></div>
         </div>
 
-        <!-- Notification Panel -->
         <div id="notificationPanel" class="notification-panel">
             <div class="notification-header">
                 <h3>Notifications</h3>
@@ -171,7 +168,6 @@
             <div id="notificationList" class="notification-list"></div>
         </div>
 
-        <!-- Modal Container -->
         <div id="modalContainer"></div>
     </div>
 

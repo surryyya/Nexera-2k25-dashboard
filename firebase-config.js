@@ -1,5 +1,5 @@
-# Firebase Configuration Module
-# Add this file as: firebase-config.js
+// Firebase Configuration Module
+// File: firebase-config.js
 
 const firebaseConfig = {
   apiKey: "AIzaSyC7aB2vFqupi2r3LeSVjB9tj89J_d0HT6w",
@@ -18,9 +18,11 @@ if (!firebase.apps.length) {
 }
 
 // Reference to database
-const database = firebase.database();
+const db = firebase.database();
 const auth = firebase.auth();
 
 console.log('✅ Firebase initialized successfully');
 console.log('📊 Database URL:', firebaseConfig.databaseURL);
 console.log('🔐 Project ID:', firebaseConfig.projectId);
+
+// The extra "}" at the end is removed

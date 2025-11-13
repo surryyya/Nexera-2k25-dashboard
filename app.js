@@ -1,217 +1,225 @@
-// Data Storage
+// --- Configuration ---
 const SYMPOSIUM_DATE = new Date('2025-11-27T10:00:00');
-const COLLEGE_DOMAIN = '@cit.edu.in';
 
-let currentUser = null;
+// --- Application State ---
+let currentUser = null; // Will hold { uid, name, email, role, teamId }
 let currentPage = 'dashboard';
-let notifications = [];
+let notifications = []; // Mock notifications
 
-// Sample Data
-/*const users = [
-  { id: 1, name: 'Dr. Rajesh Kumar', email: 'admin@ececollege.edu.in', role: 'Admin', team: null },
-  { id: 2, name: 'Priya Sharma', email: 'teamlead@ececollege.edu.in', role: 'Team Lead', team: 'Events' },
-  { id: 3, name: 'Amit Patel', email: 'volunteer@ececollege.edu.in', role: 'Volunteer', team: 'Events' },
-  { id: 4, name: 'Sneha Reddy', email: 'sneha@ececollege.edu.in', role: 'Team Lead', team: 'Logistics' },
-  { id: 5, name: 'Rahul Verma', email: 'rahul@ececollege.edu.in', role: 'Volunteer', team: 'Logistics' },
-  { id: 6, name: 'Kavya Nair', email: 'kavya@ececollege.edu.in', role: 'Team Lead', team: 'Sponsorship' },
-  { id: 7, name: 'Arjun Singh', email: 'arjun@ececollege.edu.in', role: 'Volunteer', team: 'Media & PR' },
-  { id: 8, name: 'Prof. Meera Iyer', email: 'meera@ececollege.edu.in', role: 'Admin', team: 'Faculty Oversight' }
-];*/
+// --- Real-Time Data Cache ---
+// This object will be kept in sync with Firebase automatically
+let dbData = {
+  users: {},
+  teams: {},
+  tasks: {},
+  events: {},
+  sponsors: {},
+  logistics: {}
+};
 
-const teams = [
-  { id: 1, name: 'Events', icon: '🎯', leadId: 2, memberIds: [2, 3], whatsappLink: 'https://chat.whatsapp.com/events-symphony25', telegramLink: 'https://t.me/symphony25_events', description: 'Manages all technical and non-technical events for Symphony \'25' },
-  { id: 2, name: 'Logistics', icon: '⚙️', leadId: 4, memberIds: [4, 5], whatsappLink: 'https://chat.whatsapp.com/logistics-symphony25', telegramLink: 'https://t.me/symphony25_logistics', description: 'Handles venue setup, certificates, kits, and equipment' },
-  { id: 3, name: 'Sponsorship', icon: '💰', leadId: 6, memberIds: [6], whatsappLink: 'https://chat.whatsapp.com/sponsor-symphony25', telegramLink: 'https://t.me/symphony25_sponsors', description: 'Coordinates with sponsors and manages funding' },
-  { id: 4, name: 'Media & PR', icon: '🎨', leadId: 7, memberIds: [7], whatsappLink: 'https://chat.whatsapp.com/media-symphony25', telegramLink: 'https://t.me/symphony25_media', description: 'Creates promotional content and manages social media' },
-  { id: 5, name: 'Faculty Oversight', icon: '🧠', leadId: 8, memberIds: [8, 1], whatsappLink: 'https://chat.whatsapp.com/faculty-symphony25', telegramLink: 'https://t.me/symphony25_faculty', description: 'Faculty coordination and approval management' }
-];
+// --- 1. Authentication & Role Loading ---
 
-let tasks = [
-  { id: 1, title: 'Book Main Auditorium', description: 'Coordinate with admin office for main hall booking for inauguration', teamId: 2, assigneeId: 5, dueDate: '2025-11-20', status: 'In Progress', priority: 'High', eventId: 1, files: [] },
-  { id: 2, title: 'Design Event Posters', description: 'Create promotional posters for all events', teamId: 4, assigneeId: 7, dueDate: '2025-11-15', status: 'Done', priority: 'High', eventId: null, files: [] },
-  { id: 3, title: 'Contact Tech Sponsors', description: 'Reach out to potential tech company sponsors', teamId: 3, assigneeId: 6, dueDate: '2025-11-18', status: 'To Do', priority: 'High', eventId: null, files: [] },
-  { id: 4, title: 'Order Participant Kits', description: 'Order 500 participant kits with Symphony \'25 branding', teamId: 2, assigneeId: 4, dueDate: '2025-11-22', status: 'To Do', priority: 'Medium', eventId: null, files: [] },
-  { id: 5, title: 'Setup TechQuest Registration', description: 'Create online registration form for hackathon', teamId: 1, assigneeId: 3, dueDate: '2025-11-14', status: 'Done', priority: 'High', eventId: 1, files: [] },
-  { id: 6, title: 'Social Media Campaign Launch', description: 'Start Instagram and LinkedIn promotional campaign', teamId: 4, assigneeId: 7, dueDate: '2025-11-13', status: 'Done', priority: 'Medium', eventId: null, files: [] },
-  { id: 7, title: 'Arrange Sound System', description: 'Coordinate with AV team for sound system setup', teamId: 2, assigneeId: 5, dueDate: '2025-11-25', status: 'To Do', priority: 'High', eventId: 2, files: [] },
-  { id: 8, title: 'Print Certificates', description: 'Design and print 250 participation certificates', teamId: 2, assigneeId: 4, dueDate: '2025-11-24', status: 'In Progress', priority: 'Medium', eventId: null, files: [] },
-  { id: 9, title: 'Confirm Chief Guest', description: 'Get confirmation from industry expert for inauguration', teamId: 5, assigneeId: 1, dueDate: '2025-11-16', status: 'In Progress', priority: 'High', eventId: 2, files: [] },
-  { id: 10, title: 'Setup Workshop Venue', description: 'Arrange seating and projector for IoT workshop', teamId: 2, assigneeId: 5, dueDate: '2025-11-26', status: 'To Do', priority: 'Medium', eventId: 3, files: [] }
-];
-
-const events = [
-  { id: 1, name: 'TechQuest Hackathon', type: 'Technical', date: '2025-11-27', time: '09:00 AM', venue: 'Computer Lab 1 & 2', coordinatorId: 2, description: '24-hour coding competition for students across all years' },
-  { id: 2, name: 'Symphony Inauguration', type: 'Non-Technical', date: '2025-11-27', time: '10:00 AM', venue: 'Main Auditorium', coordinatorId: 1, description: 'Official opening ceremony with chief guest address' },
-  { id: 3, name: 'IoT Workshop', type: 'Technical', date: '2025-11-28', time: '02:00 PM', venue: 'ECE Lab A', coordinatorId: 2, description: 'Hands-on workshop on IoT and embedded systems' },
-  { id: 4, name: 'Project Expo', type: 'Technical', date: '2025-11-28', time: '10:00 AM', venue: 'Exhibition Hall', coordinatorId: 3, description: 'Student project showcase and competition' },
-  { id: 5, name: 'Cultural Evening', type: 'Non-Technical', date: '2025-11-28', time: '06:00 PM', venue: 'Open Amphitheater', coordinatorId: 7, description: 'Music, dance, and entertainment performances' }
-];
-
-let sponsors = [
-  { id: 1, name: 'Tech Innovators Pvt Ltd', tier: 'Platinum', amount: 50000, status: 'Confirmed', contactPerson: 'Mr. Rajesh Sharma', notes: 'Logo on all promotional materials' },
-  { id: 2, name: 'CodeCraft Solutions', tier: 'Gold', amount: 30000, status: 'Confirmed', contactPerson: 'Ms. Priya Desai', notes: 'Workshop collaboration partner' },
-  { id: 3, name: 'StartupHub India', tier: 'Silver', amount: 15000, status: 'In Discussion', contactPerson: 'Mr. Amit Kumar', notes: 'Pending final contract' },
-  { id: 4, name: 'Digital Minds', tier: 'Bronze', amount: 10000, status: 'Confirmed', contactPerson: 'Ms. Sneha Rao', notes: 'Providing goodies for participants' },
-  { id: 5, name: 'EduTech Corporation', tier: 'Gold', amount: 25000, status: 'Contacted', contactPerson: 'Dr. Venkat Reddy', notes: 'Awaiting response' }
-];
-
-let logistics = [
-  { id: 1, itemName: 'Main Auditorium Booking', category: 'Venue', status: 'Completed', responsiblePersonId: 4, dueDate: '2025-11-20', notes: 'Booked for Nov 27, 10 AM - 12 PM' },
-  { id: 2, itemName: 'Participant Certificates', category: 'Certificates', status: 'Ordered', responsiblePersonId: 5, dueDate: '2025-11-24', notes: '250 certificates from PrintHub, delivery on Nov 24' },
-  { id: 3, itemName: 'Event Kits', category: 'Kits', status: 'Pending', responsiblePersonId: 4, dueDate: '2025-11-22', notes: '500 kits with pen, notebook, badge' },
-  { id: 4, itemName: 'Projector and Screen', category: 'Equipment', status: 'Received', responsiblePersonId: 5, dueDate: '2025-11-25', notes: 'From IT department, tested and working' },
-  { id: 5, itemName: 'Sound System', category: 'Equipment', status: 'Ordered', responsiblePersonId: 5, dueDate: '2025-11-25', notes: 'External vendor, setup on Nov 26' }
-];
-
-// Utility Functions
-function getUserById(id) {
-  return users.find(u => u.id === id);
-}
-
-function getTeamById(id) {
-  return teams.find(t => t.id === id);
-}
-
-function getEventById(id) {
-  return events.find(e => e.id === id);
-}
-
-function getInitials(name) {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase();
-}
-
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  const options = { month: 'short', day: 'numeric', year: 'numeric' };
-  return date.toLocaleDateString('en-US', options);
-}
-
-function isUrgent(dueDate) {
-  const due = new Date(dueDate);
-  const now = new Date();
-  const diff = due - now;
-  const days = diff / (1000 * 60 * 60 * 24);
-  return days <= 3 && days >= 0;
-}
-
-function calculateProgress() {
-  const total = tasks.length;
-  const completed = tasks.filter(t => t.status === 'Done').length;
-  return total > 0 ? Math.round((completed / total) * 100) : 0;
-}
-
-function calculateTeamProgress(teamId) {
-  const teamTasks = tasks.filter(t => t.teamId === teamId);
-  const total = teamTasks.length;
-  const completed = teamTasks.filter(t => t.status === 'Done').length;
-  return total > 0 ? Math.round((completed / total) * 100) : 0;
-}
-
-function addNotification(type, message, taskId = null) {
-  const task = taskId ? tasks.find(t => t.id === taskId) : null;
-  const notification = {
-    id: Date.now(),
-    type,
-    message,
-    taskId,
-    taskName: task ? task.title : '',
-    team: task ? getTeamById(task.teamId).name : '',
-    assignee: task ? getUserById(task.assigneeId).email : '',
-    dueDate: task ? task.dueDate : '',
-    timestamp: new Date().toISOString(),
-    read: false
-  };
-  notifications.unshift(notification);
-  updateNotificationBadge();
-  return notification;
-}
-
-function updateNotificationBadge() {
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const badge = document.getElementById('notificationBadge');
-  if (badge) {
-    badge.textContent = unreadCount;
-    badge.classList.toggle('hidden', unreadCount === 0);
+// This is the main entry point for the app
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    // 1. User is logged in, fetch their profile from the DB
+    try {
+      const snapshot = await db.ref(`/users/${user.uid}`).once('value');
+      if (snapshot.exists()) {
+        // 2. Store user profile (with role) in `currentUser`
+        currentUser = { uid: user.uid, ...snapshot.val() };
+        console.log(`Role loaded: ${currentUser.role}`);
+        
+        // 3. Start real-time listeners for all data
+        initializeRealTimeListeners();
+        
+        // 4. Show the main app
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('mainDashboard').style.display = 'flex';
+        updateUserProfileUI();
+        startCountdown();
+        
+        // 5. Navigate to the default page
+        navigateToPage('dashboard');
+      } else {
+        // User exists in Auth, but not in DB (error state)
+        console.error("User profile not found in database.");
+        alert("Your user profile is not configured. Please contact an admin.");
+        auth.signOut();
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      auth.signOut();
+    }
+  } else {
+    // 0. User is logged out, show the login page
+    currentUser = null;
+    document.getElementById('mainDashboard').style.display = 'none';
+    document.getElementById('loginPage').style.display = 'flex';
+    
+    // Detach all listeners when logged out
+    db.ref().off();
   }
-}
+});
 
-// Login Handler
+// Handles the login form submission
 function handleLogin(event) {
   event.preventDefault();
   
   const email = document.getElementById('emailInput').value.trim();
-  const errorElement = document.getElementById('emailError');
+  const password = document.getElementById('passwordInput').value;
+  const loginButton = document.getElementById('loginButton');
+  const loginErrorMsg = document.getElementById('loginErrorMessage');
   
-  if (!email.endsWith(COLLEGE_DOMAIN)) {
-    errorElement.textContent = `Please use a valid ${COLLEGE_DOMAIN} email address`;
-    errorElement.classList.add('show');
-    return;
-  }
-  
-  const user = users.find(u => u.email === email);
-  if (!user) {
-    errorElement.textContent = 'User not found. Please use one of the demo accounts.';
-    errorElement.classList.add('show');
-    return;
-  }
-  
-  currentUser = user;
-  document.getElementById('loginPage').style.display = 'none';
-  document.getElementById('mainDashboard').style.display = 'flex';
-  
-  updateUserProfile();
-  initializeNotifications();
-  startCountdown();
-  navigateToPage('dashboard');
+  loginErrorMsg.textContent = '';
+  loginErrorMsg.classList.remove('show');
+  loginButton.textContent = 'Signing In...';
+  loginButton.disabled = true;
+
+  auth.signInWithEmailAndPassword(email, password)
+    .then(userCredential => {
+      // Login successful. onAuthStateChanged listener will handle the rest.
+      console.log("Login successful");
+    })
+    .catch(error => {
+      loginErrorMsg.textContent = error.message;
+      loginErrorMsg.classList.add('show');
+      loginButton.textContent = 'Sign In';
+      loginButton.disabled = false;
+    });
 }
 
-function updateUserProfile() {
-  const initials = getInitials(currentUser.name);
-  document.getElementById('sidebarAvatar').textContent = initials;
-  document.getElementById('headerAvatar').textContent = initials;
-  document.getElementById('sidebarUserName').textContent = currentUser.name;
-  document.getElementById('sidebarUserRole').textContent = currentUser.role;
+// Handles the logout button
+function handleLogout() {
+  auth.signOut();
 }
 
-function initializeNotifications() {
-  // Add sample notifications
-  addNotification('task_created', `New task assigned to ${currentUser.name}`, 3);
-  addNotification('deadline_reminder', 'Task deadline approaching', 1);
-  addNotification('task_completed', 'Task marked as complete', 2);
+// --- 2. Real-Time Data Sync ---
+// (As described in "Real-Time Features Using Firebase")
+
+/**
+ * Attaches real-time listeners to all main data nodes.
+ * When data changes, it updates the `dbData` cache and re-renders the UI.
+ */
+function initializeRealTimeListeners() {
+  const nodes = ['users', 'teams', 'tasks', 'events', 'sponsors', 'logistics'];
+  
+  nodes.forEach(node => {
+    db.ref(node).on('value', (snapshot) => {
+      console.log(`Real-time data updated for: /${node}`);
+      dbData[node] = snapshot.val() || {};
+      
+      // When data changes, refresh the current page
+      // We check for `currentUser` to prevent errors during logout
+      if (currentUser) {
+        refreshCurrentPage();
+      }
+    });
+  });
 }
 
-// Countdown Timer
-function startCountdown() {
-  function updateCountdown() {
-    const now = new Date();
-    const diff = SYMPOSIUM_DATE - now;
+/**
+ * Re-renders the content of the currently active page.
+ */
+function refreshCurrentPage() {
+  navigateToPage(currentPage, true); // `true` signals this is a refresh
+}
+
+// --- 3. Role-Based Access Control (RBAC) ---
+// (As described in "Access Control in Code")
+
+/**
+ * A helper object to check permissions based on the current user's role.
+ */
+const Permissions = {
+  // Can create, edit details, assign, or delete a task
+  canManageTask: (task) => {
+    if (currentUser.role === 'admin') return true;
+    // `task` is null when checking "Create" permission
+    if (!task && currentUser.role === 'team_lead') return true; 
+    // `task` exists when checking "Edit/Delete"
+    if (task && currentUser.role === 'team_lead' && task.teamId === currentUser.teamId) return true;
+    return false;
+  },
+
+  // Can only update the 'status' or 'comments'
+  canUpdateTaskStatus: (task) => {
+    if (Permissions.canManageTask(task)) return true; // Admins/Leads can also update status
+    if (currentUser.role === 'volunteer' && task.assigneeId === currentUser.uid) return true;
+    return false;
+  },
+
+  canManageTeams: () => currentUser.role === 'admin',
+  
+  canManageSponsors: () => {
+    // Example: Only Admin or Sponsorship team lead
+    if (currentUser.role === 'admin') return true;
+    const team = dbData.teams[currentUser.teamId] || {};
+    if (currentUser.role === 'team_lead' && team.name === 'Sponsorship') return true;
+    return false;
+  },
+  
+  canManageLogistics: () => {
+    if (currentUser.role === 'admin') return true;
+    const team = dbData.teams[currentUser.teamId] || {};
+    if (currentUser.role === 'team_lead' && team.name === 'Logistics') return true;
+    return false;
+  },
+
+  canCreateEvent: () => currentUser.role === 'admin',
+  
+  canViewPage: (page) => {
+    // Example: Volunteers cannot see 'Analytics'
+    if (page === 'analytics' && currentUser.role === 'volunteer') return false;
     
-    if (diff <= 0) {
-      document.getElementById('countdownDays').textContent = '0';
-      document.getElementById('countdownHours').textContent = '0';
-      document.getElementById('countdownMinutes').textContent = '0';
-      document.getElementById('countdownSeconds').textContent = '0';
-      return;
+    // Example: Only Admin/Sponsor team can see 'Sponsors'
+    if (page === 'sponsors' && !Permissions.canManageSponsors()) {
+      // We'll allow viewing for this demo, but hide editing.
+      // To block the page entirely:
+      // if (page === 'sponsors' && currentUser.role === 'volunteer' && !Permissions.canManageSponsors()) return false;
     }
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    
-    document.getElementById('countdownDays').textContent = days;
-    document.getElementById('countdownHours').textContent = hours;
-    document.getElementById('countdownMinutes').textContent = minutes;
-    document.getElementById('countdownSeconds').textContent = seconds;
+    return true; // Default allow
+  }
+};
+
+// --- 4. Data Filtering ---
+
+/**
+ * Gets the list of tasks visible to the current user based on their role.
+ * Admin: Sees all tasks.
+ * Team Lead: Sees all tasks for their team.
+ * Volunteer: Sees ONLY tasks assigned directly to them.
+ */
+function getVisibleTasks() {
+  const allTasks = Object.values(dbData.tasks);
+  
+  if (currentUser.role === 'admin') {
+    return allTasks;
   }
   
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
+  if (currentUser.role === 'team_lead') {
+    return allTasks.filter(task => task.teamId === currentUser.teamId);
+  }
+  
+  if (currentUser.role === 'volunteer') {
+    return allTasks.filter(task => task.assigneeId === currentUser.uid);
+  }
+  
+  return []; // Should not happen
 }
 
-// Navigation
-function navigateToPage(page) {
-  currentPage = page;
+// --- 5. Page Navigation & Rendering ---
+
+function navigateToPage(page, isRefresh = false) {
+  // Check if user is allowed to see this page
+  if (!isRefresh && !Permissions.canViewPage(page)) {
+    alert("You do not have permission to view this page.");
+    return;
+  }
+  
+  if (!isRefresh) {
+    currentPage = page;
+  }
   
   // Update active nav item
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -221,42 +229,59 @@ function navigateToPage(page) {
   // Render page content
   const pageContent = document.getElementById('pageContent');
   
-  switch(page) {
-    case 'dashboard':
-      renderDashboard(pageContent);
-      break;
-    case 'teams':
-      renderTeams(pageContent);
-      break;
-    case 'events':
-      renderEvents(pageContent);
-      break;
-    case 'tasks':
-      renderTasks(pageContent);
-      break;
-    case 'sponsors':
-      renderSponsors(pageContent);
-      break;
-    case 'logistics':
-      renderLogistics(pageContent);
-      break;
-    case 'communication':
-      renderCommunication(pageContent);
-      break;
-    case 'analytics':
-      renderAnalytics(pageContent);
-      break;
+  // Show loading spinner during re-renders
+  if (isRefresh) {
+    pageContent.style.opacity = '0.5';
+  } else {
+    pageContent.innerHTML = `<p>Loading ${page}...</p>`;
   }
+
+  // A slight delay to allow the DOM to update and data to be ready
+  // This makes the real-time updates feel smoother
+  setTimeout(() => {
+    switch(page) {
+      case 'dashboard':
+        renderDashboard(pageContent);
+        break;
+      case 'teams':
+        renderTeams(pageContent);
+        break;
+      case 'events':
+        renderEvents(pageContent);
+        break;
+      case 'tasks':
+        renderTasks(pageContent);
+        break;
+      case 'sponsors':
+        renderSponsors(pageContent);
+        break;
+      case 'logistics':
+        renderLogistics(pageContent);
+        break;
+      case 'communication':
+        renderCommunication(pageContent);
+        break;
+      case 'analytics':
+        renderAnalytics(pageContent);
+        break;
+      default:
+        pageContent.innerHTML = `<h2>Page not found: ${page}</h2>`;
+    }
+    pageContent.style.opacity = '1';
+  }, 50); // 50ms throttle
 }
+
+// --- Page Render Functions (Now Role-Aware) ---
 
 // Dashboard Page
 function renderDashboard(container) {
-  const progress = calculateProgress();
+  // Get tasks *visible* to this user
+  const tasks = getVisibleTasks();
+  const progress = calculateProgress(tasks);
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.status === 'Done').length;
-  const inProgressTasks = tasks.filter(t => t.status === 'In Progress').length;
-  const activeEvents = events.length;
-  const totalMembers = users.length;
+  const activeEvents = Object.keys(dbData.events).length;
+  const totalMembers = Object.keys(dbData.users).length;
   
   const urgentTasks = tasks
     .filter(t => t.status !== 'Done' && isUrgent(t.dueDate))
@@ -267,12 +292,12 @@ function renderDashboard(container) {
     <div class="welcome-banner">
       <div class="welcome-content">
         <h1 class="welcome-title">Welcome back, ${currentUser.name}!</h1>
-        <span class="role-badge">${currentUser.role}</span>
-        <p>Symphony '25 is just around the corner. Let's make it amazing!</p>
+        <span class="role-badge">${currentUser.role.replace('_', ' ')}</span>
+        <p>Your tasks are waiting. Let's make it amazing!</p>
         <div class="quick-actions">
-          <button class="btn" onclick="openCreateTaskModal()">+ Create Task</button>
-          <button class="btn" onclick="openCreateEventModal()">+ Add Event</button>
-          <button class="btn" onclick="navigateToPage('teams')">View Teams</button>
+          ${Permissions.canManageTask(null) ? `<button class="btn" onclick="openTaskModal()">+ Create Task</button>` : ''}
+          ${Permissions.canCreateEvent() ? `<button class="btn" onclick="openCreateEventModal()">+ Add Event</button>` : ''}
+          <button class="btn" onclick="navigateToPage('tasks')">View All My Tasks</button>
         </div>
       </div>
     </div>
@@ -281,7 +306,7 @@ function renderDashboard(container) {
       <div class="stat-card">
         <div class="stat-icon bg-1">✓</div>
         <div class="stat-info">
-          <div class="stat-label">Total Tasks</div>
+          <div class="stat-label">Your/Team Tasks</div>
           <div class="stat-value">${totalTasks}</div>
         </div>
       </div>
@@ -293,6 +318,7 @@ function renderDashboard(container) {
           <div class="stat-change">${progress}% complete</div>
         </div>
       </div>
+      ${currentUser.role !== 'volunteer' ? `
       <div class="stat-card">
         <div class="stat-icon bg-3">📅</div>
         <div class="stat-info">
@@ -307,175 +333,78 @@ function renderDashboard(container) {
           <div class="stat-value">${totalMembers}</div>
         </div>
       </div>
+      ` : ''}
     </div>
     
     <div class="grid-2">
-      <div class="progress-section">
-        <div class="section-header">
-          <h3 class="section-title">Overall Progress</h3>
-        </div>
-        <div class="progress-circle-container">
-          <div class="progress-circle">
-            <svg class="progress-ring" width="200" height="200">
-              <defs>
-                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style="stop-color:#6366F1" />
-                  <stop offset="100%" style="stop-color:#06B6D4" />
-                </linearGradient>
-              </defs>
-              <circle class="progress-ring-bg" cx="100" cy="100" r="90" />
-              <circle class="progress-ring-fill" cx="100" cy="100" r="90" 
-                stroke-dasharray="${565}" 
-                stroke-dashoffset="${565 - (565 * progress / 100)}" />
-            </svg>
-            <div class="progress-text">
-              <div class="progress-percentage">${progress}%</div>
-              <div class="progress-label">Complete</div>
-            </div>
-          </div>
-        </div>
-        <p class="text-center" style="color: var(--color-text-secondary); margin-top: var(--space-16);">
-          ${completedTasks} of ${totalTasks} tasks completed
-        </p>
-      </div>
-      
       <div class="tasks-section">
         <div class="section-header">
-          <h3 class="section-title">Urgent Tasks</h3>
+          <h3 class="section-title">Your Urgent Tasks</h3>
           <button class="btn btn--sm" onclick="navigateToPage('tasks')">View All</button>
         </div>
         <div class="task-list">
-          ${urgentTasks.length === 0 ? '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-24);">No urgent tasks</p>' : urgentTasks.map(task => {
-            const assignee = getUserById(task.assigneeId);
-            const team = getTeamById(task.teamId);
-            return `
-              <div class="task-item" onclick="openTaskDetail(${task.id})">
+          ${urgentTasks.length === 0 ? '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-24);">No urgent tasks</p>' : urgentTasks.map(task => `
+              <div class="task-item" onclick="openTaskDetailModal('${task.id}')">
                 <div class="task-priority ${task.priority.toLowerCase()}"></div>
                 <div class="task-details">
                   <div class="task-title">${task.title}</div>
                   <div class="task-meta">
-                    <span class="task-assignee">👤 ${assignee.name}</span>
-                    <span class="status status--${task.status.toLowerCase().replace(' ', '')}">⚡ ${team.icon} ${team.name}</span>
+                    <span class="task-assignee">👤 ${getUserById(task.assigneeId).name}</span>
+                    <span class="status status--info">⚡ ${getTeamById(task.teamId).icon} ${getTeamById(task.teamId).name}</span>
                     <span class="task-due-date ${isUrgent(task.dueDate) ? 'urgent' : ''}">📅 ${formatDate(task.dueDate)}</span>
                   </div>
                 </div>
+              </div>
+            `).join('')}
+        </div>
+      </div>
+      
+      ${currentUser.role !== 'volunteer' ? `
+      <div class="progress-section">
+        <div class="section-header">
+          <h3 class="section-title">Team Progress</h3>
+        </div>
+        <div class="team-progress-list">
+          ${getObjectValues(dbData.teams).map((team, index) => {
+            const teamProgress = calculateTeamProgress(team.id);
+            return `
+              <div class="team-progress-item">
+                <div class="team-info">
+                  <span class="team-icon">${team.icon}</span>
+                  <span class="team-name">${team.name}</span>
+                </div>
+                <div class="progress-bar-container">
+                  <div class="progress-bar color-${(index % 5) + 1}" style="width: ${teamProgress}%"></div>
+                </div>
+                <div class="progress-percentage-text">${teamProgress}%</div>
               </div>
             `;
           }).join('')}
         </div>
       </div>
-    </div>
-    
-    <div class="progress-section">
-      <div class="section-header">
-        <h3 class="section-title">Team Progress</h3>
+      ` : `
+      <div class="progress-section">
+        <h3 class="section-title">Symphony '25</h3>
+        <p>Welcome to the team! Your assigned tasks will appear here and on the 'Tasks' page.</p>
+        <p>Thank you for volunteering!</p>
       </div>
-      <div class="team-progress-list">
-        ${teams.map((team, index) => {
-          const teamProgress = calculateTeamProgress(team.id);
-          return `
-            <div class="team-progress-item">
-              <div class="team-info">
-                <span class="team-icon">${team.icon}</span>
-                <span class="team-name">${team.name}</span>
-              </div>
-              <div class="progress-bar-container">
-                <div class="progress-bar color-${(index % 5) + 1}" style="width: ${teamProgress}%"></div>
-              </div>
-              <div class="progress-percentage-text">${teamProgress}%</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
+      `}
     </div>
   `;
 }
 
-// Teams Page
-function renderTeams(container) {
-  container.innerHTML = `
-    <h2 style="margin-bottom: var(--space-24);">Teams</h2>
-    <div class="grid-3">
-      ${teams.map(team => {
-        const lead = getUserById(team.leadId);
-        const members = team.memberIds.map(id => getUserById(id));
-        const teamProgress = calculateTeamProgress(team.id);
-        const teamTasks = tasks.filter(t => t.teamId === team.id);
-        const todoCount = teamTasks.filter(t => t.status === 'To Do').length;
-        const inProgressCount = teamTasks.filter(t => t.status === 'In Progress').length;
-        const doneCount = teamTasks.filter(t => t.status === 'Done').length;
-        
-        return `
-          <div class="card" onclick="viewTeamDetail(${team.id})" style="cursor: pointer;">
-            <div class="card__body">
-              <div style="font-size: 48px; text-align: center; margin-bottom: var(--space-16);">${team.icon}</div>
-              <h3 style="text-align: center; margin-bottom: var(--space-8);">${team.name}</h3>
-              <p style="text-align: center; color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--space-16);">Lead: ${lead.name}</p>
-              <div style="margin-bottom: var(--space-16);">
-                <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-8); font-size: var(--font-size-sm);">
-                  <span>Progress</span>
-                  <span style="font-weight: var(--font-weight-semibold);">${teamProgress}%</span>
-                </div>
-                <div class="progress-bar-container">
-                  <div class="progress-bar color-1" style="width: ${teamProgress}%"></div>
-                </div>
-              </div>
-              <div style="display: flex; gap: var(--space-8); margin-bottom: var(--space-16); font-size: var(--font-size-sm);">
-                <span class="status status--todo">${todoCount} To Do</span>
-                <span class="status status--inprogress">${inProgressCount} In Progress</span>
-                <span class="status status--done">${doneCount} Done</span>
-              </div>
-              <button class="btn btn--primary btn--full-width" onclick="event.stopPropagation(); viewTeamDetail(${team.id})">View Details</button>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-}
+// Tasks Page (Kanban View)
+function renderTasks(container) {
+  const tasks = getVisibleTasks(); // Get ONLY the tasks user is allowed to see
+  
+  const todoTasks = tasks.filter(t => t.status === 'To Do');
+  const inProgressTasks = tasks.filter(t => t.status === 'In Progress');
+  const doneTasks = tasks.filter(t => t.status === 'Done');
 
-function viewTeamDetail(teamId) {
-  const team = getTeamById(teamId);
-  const lead = getUserById(team.leadId);
-  const members = team.memberIds.map(id => getUserById(id));
-  const teamTasks = tasks.filter(t => t.teamId === teamId);
-  
-  const todoTasks = teamTasks.filter(t => t.status === 'To Do');
-  const inProgressTasks = teamTasks.filter(t => t.status === 'In Progress');
-  const doneTasks = teamTasks.filter(t => t.status === 'Done');
-  
-  const container = document.getElementById('pageContent');
   container.innerHTML = `
-    <div style="margin-bottom: var(--space-24);">
-      <button class="btn btn--outline btn--sm" onclick="navigateToPage('teams')">← Back to Teams</button>
-    </div>
-    
-    <div class="card" style="margin-bottom: var(--space-24);">
-      <div class="card__body">
-        <div style="display: flex; align-items: center; gap: var(--space-16); margin-bottom: var(--space-16);">
-          <div style="font-size: 48px;">${team.icon}</div>
-          <div style="flex: 1;">
-            <h2>${team.name}</h2>
-            <p style="color: var(--color-text-secondary); margin: var(--space-8) 0;">${team.description}</p>
-            <p style="font-size: var(--font-size-sm);">Team Lead: <strong>${lead.name}</strong></p>
-          </div>
-          <div style="display: flex; gap: var(--space-8);">
-            <a href="${team.whatsappLink}" target="_blank" class="btn btn--outline btn--sm">📱 WhatsApp</a>
-            <a href="${team.telegramLink}" target="_blank" class="btn btn--outline btn--sm">✈️ Telegram</a>
-          </div>
-        </div>
-        <div>
-          <strong>Members:</strong>
-          <div style="display: flex; gap: var(--space-8); margin-top: var(--space-8); flex-wrap: wrap;">
-            ${members.map(m => `<span class="status status--info">${m.name}</span>`).join('')}
-          </div>
-        </div>
-      </div>
-    </div>
-    
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-24);">
-      <h3>Task Board</h3>
-      ${canCreateTask() ? `<button class="btn btn--primary" onclick="openCreateTaskModal(${teamId})">+ Add Task</button>` : ''}
+      <h2>Tasks</h2>
+      ${Permissions.canManageTask(null) ? `<button class="btn btn--primary" onclick="openTaskModal()">+ Create Task</button>` : ''}
     </div>
     
     <div class="kanban-board">
@@ -514,8 +443,9 @@ function viewTeamDetail(teamId) {
 
 function renderKanbanCard(task) {
   const assignee = getUserById(task.assigneeId);
+  // When a card is clicked, open the detail/edit modal
   return `
-    <div class="kanban-card" onclick="openTaskDetail(${task.id})">
+    <div class="kanban-card" onclick="openTaskDetailModal('${task.id}')">
       <div class="kanban-card-title">${task.title}</div>
       <div class="kanban-card-description">${task.description}</div>
       <div class="kanban-card-footer">
@@ -527,342 +457,36 @@ function renderKanbanCard(task) {
   `;
 }
 
-// Events Page
-function renderEvents(container) {
+// Teams Page
+function renderTeams(container) {
+  // Volunteers do not need to see the team management page
+  if (currentUser.role === 'volunteer') {
+    container.innerHTML = '<h2>My Team</h2><p>Page not applicable for this role.</p>';
+    return;
+  }
+
   container.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-24);">
-      <h2>Events</h2>
-      ${canCreateEvent() ? `<button class="btn btn--primary" onclick="openCreateEventModal()">+ Add Event</button>` : ''}
-    </div>
-    
+    <h2 style="margin-bottom: var(--space-24);">Teams</h2>
     <div class="grid-3">
-      ${events.map(event => {
-        const coordinator = getUserById(event.coordinatorId);
-        const eventTasks = tasks.filter(t => t.eventId === event.id);
-        const completedTasks = eventTasks.filter(t => t.status === 'Done').length;
-        const eventProgress = eventTasks.length > 0 ? Math.round((completedTasks / eventTasks.length) * 100) : 0;
+      ${getObjectValues(dbData.teams).map(team => {
+        const lead = getUserById(team.leadId);
+        const teamTasks = getObjectValues(dbData.tasks).filter(t => t.teamId === team.id);
+        const teamProgress = calculateTeamProgress(team.id);
+        const todoCount = teamTasks.filter(t => t.status === 'To Do').length;
+        const doneCount = teamTasks.filter(t => t.status === 'Done').length;
         
-        return `
-          <div class="card" onclick="viewEventDetail(${event.id})" style="cursor: pointer;">
-            <div class="card__body">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
-                <h3 style="margin: 0; flex: 1;">${event.name}</h3>
-                <span class="status status--${event.type === 'Technical' ? 'info' : 'success'}">${event.type}</span>
-              </div>
-              <div style="margin-bottom: var(--space-12); font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-                <div style="margin-bottom: var(--space-4);">📅 ${formatDate(event.date)} at ${event.time}</div>
-                <div style="margin-bottom: var(--space-4);">📍 ${event.venue}</div>
-                <div>👤 ${coordinator.name}</div>
-              </div>
-              <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-16);">${event.description}</p>
-              <div style="margin-bottom: var(--space-8);">
-                <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-4); font-size: var(--font-size-sm);">
-                  <span>Progress</span>
-                  <span style="font-weight: var(--font-weight-semibold);">${eventProgress}%</span>
-                </div>
-                <div class="progress-bar-container">
-                  <div class="progress-bar color-2" style="width: ${eventProgress}%"></div>
-                </div>
-              </div>
-              <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-                ${eventTasks.length} tasks (${completedTasks} completed)
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-}
-
-function viewEventDetail(eventId) {
-  const event = getEventById(eventId);
-  const coordinator = getUserById(event.coordinatorId);
-  const eventTasks = tasks.filter(t => t.eventId === eventId);
-  
-  showModal('Event Details', `
-    <div style="margin-bottom: var(--space-20);">
-      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-16);">
-        <h3 style="margin: 0;">${event.name}</h3>
-        <span class="status status--${event.type === 'Technical' ? 'info' : 'success'}">${event.type}</span>
-      </div>
-      <div style="margin-bottom: var(--space-12); font-size: var(--font-size-base);">
-        <div style="margin-bottom: var(--space-8);"><strong>Date:</strong> ${formatDate(event.date)} at ${event.time}</div>
-        <div style="margin-bottom: var(--space-8);"><strong>Venue:</strong> ${event.venue}</div>
-        <div style="margin-bottom: var(--space-8);"><strong>Coordinator:</strong> ${coordinator.name}</div>
-      </div>
-      <p style="color: var(--color-text-secondary);">${event.description}</p>
-    </div>
-    
-    <h4 style="margin-bottom: var(--space-16);">Associated Tasks (${eventTasks.length})</h4>
-    ${eventTasks.length === 0 ? '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-24);">No tasks associated with this event</p>' : `
-      <div style="display: flex; flex-direction: column; gap: var(--space-12);">
-        ${eventTasks.map(task => {
-          const assignee = getUserById(task.assigneeId);
-          const team = getTeamById(task.teamId);
-          return `
-            <div style="padding: var(--space-12); background: var(--color-background); border-radius: var(--radius-base); border: 1px solid var(--color-border);">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-8);">
-                <strong>${task.title}</strong>
-                <span class="status status--${task.status.toLowerCase().replace(' ', '')}">${task.status}</span>
-              </div>
-              <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-                <div>${team.icon} ${team.name} • 👤 ${assignee.name} • 📅 ${formatDate(task.dueDate)}</div>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `}
-  `);
-}
-
-// Tasks Page
-function renderTasks(container) {
-  container.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-24);">
-      <h2>All Tasks</h2>
-      ${canCreateTask() ? `<button class="btn btn--primary" onclick="openCreateTaskModal()">+ Create Task</button>` : ''}
-    </div>
-    
-    <div class="data-table">
-      <table>
-        <thead>
-          <tr>
-            <th>Task</th>
-            <th>Team</th>
-            <th>Assignee</th>
-            <th>Due Date</th>
-            <th>Status</th>
-            <th>Priority</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tasks.map(task => {
-            const team = getTeamById(task.teamId);
-            const assignee = getUserById(task.assigneeId);
-            return `
-              <tr>
-                <td><strong>${task.title}</strong></td>
-                <td>${team.icon} ${team.name}</td>
-                <td>${assignee.name}</td>
-                <td class="${isUrgent(task.dueDate) ? 'urgent' : ''}">${formatDate(task.dueDate)}</td>
-                <td><span class="status status--${task.status.toLowerCase().replace(' ', '')}">${task.status}</span></td>
-                <td><span class="status status--${task.priority.toLowerCase()}">${task.priority}</span></td>
-                <td>
-                  <div class="table-actions">
-                    <button class="icon-btn" onclick="openTaskDetail(${task.id})" title="View">👁️</button>
-                    ${canEditTask(task) ? `<button class="icon-btn" onclick="openEditTaskModal(${task.id})" title="Edit">✏️</button>` : ''}
-                  </div>
-                </td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function openTaskDetail(taskId) {
-  const task = tasks.find(t => t.id === taskId);
-  const team = getTeamById(task.teamId);
-  const assignee = getUserById(task.assigneeId);
-  const event = task.eventId ? getEventById(task.eventId) : null;
-  
-  showModal('Task Details', `
-    <div style="margin-bottom: var(--space-20);">
-      <h3 style="margin-bottom: var(--space-16);">${task.title}</h3>
-      <div style="margin-bottom: var(--space-16);">
-        <div style="display: flex; gap: var(--space-8); margin-bottom: var(--space-12); flex-wrap: wrap;">
-          <span class="status status--${task.status.toLowerCase().replace(' ', '')}">${task.status}</span>
-          <span class="status status--${task.priority.toLowerCase()}">${task.priority} Priority</span>
-          <span class="status status--info">${team.icon} ${team.name}</span>
-        </div>
-      </div>
-      <div style="margin-bottom: var(--space-16);">
-        <p style="color: var(--color-text-secondary);">${task.description}</p>
-      </div>
-      <div style="margin-bottom: var(--space-12); font-size: var(--font-size-base);">
-        <div style="margin-bottom: var(--space-8);"><strong>Assignee:</strong> ${assignee.name}</div>
-        <div style="margin-bottom: var(--space-8);"><strong>Due Date:</strong> ${formatDate(task.dueDate)}</div>
-        ${event ? `<div style="margin-bottom: var(--space-8);"><strong>Event:</strong> ${event.name}</div>` : ''}
-      </div>
-      ${canEditTask(task) ? `
-        <div style="margin-top: var(--space-20);">
-          <label class="form-label">Update Status</label>
-          <select class="form-control" id="taskStatusSelect">
-            <option value="To Do" ${task.status === 'To Do' ? 'selected' : ''}>To Do</option>
-            <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-            <option value="Done" ${task.status === 'Done' ? 'selected' : ''}>Done</option>
-          </select>
-          <button class="btn btn--primary btn--full-width" style="margin-top: var(--space-12);" onclick="updateTaskStatus(${task.id})">Update Status</button>
-        </div>
-      ` : ''}
-    </div>
-  `);
-}
-
-function updateTaskStatus(taskId) {
-  const newStatus = document.getElementById('taskStatusSelect').value;
-  const task = tasks.find(t => t.id === taskId);
-  const oldStatus = task.status;
-  task.status = newStatus;
-  
-  if (oldStatus !== newStatus) {
-    addNotification('task_updated', `Task "${task.title}" moved to ${newStatus}`, taskId);
-    if (newStatus === 'Done') {
-      addNotification('task_completed', `Task "${task.title}" completed!`, taskId);
-    }
-  }
-  
-  closeModal();
-  if (currentPage === 'tasks') {
-    navigateToPage('tasks');
-  } else {
-    navigateToPage(currentPage);
-  }
-}
-
-// Sponsors Page
-function renderSponsors(container) {
-  const totalSponsors = sponsors.length;
-  const totalAmount = sponsors.reduce((sum, s) => sum + s.amount, 0);
-  const confirmedSponsors = sponsors.filter(s => s.status === 'Confirmed').length;
-  const pendingSponsors = sponsors.filter(s => s.status !== 'Confirmed').length;
-  
-  container.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-24);">
-      <h2>Sponsors</h2>
-      ${canManageSponsors() ? `<button class="btn btn--primary" onclick="openAddSponsorModal()">+ Add Sponsor</button>` : ''}
-    </div>
-    
-    <div class="stats-grid" style="margin-bottom: var(--space-32);">
-      <div class="stat-card">
-        <div class="stat-icon bg-1">💰</div>
-        <div class="stat-info">
-          <div class="stat-label">Total Amount</div>
-          <div class="stat-value">₹${totalAmount.toLocaleString()}</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-2">🏆</div>
-        <div class="stat-info">
-          <div class="stat-label">Total Sponsors</div>
-          <div class="stat-value">${totalSponsors}</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-3">✓</div>
-        <div class="stat-info">
-          <div class="stat-label">Confirmed</div>
-          <div class="stat-value">${confirmedSponsors}</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-4">⏳</div>
-        <div class="stat-info">
-          <div class="stat-label">Pending</div>
-          <div class="stat-value">${pendingSponsors}</div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="data-table">
-      <table>
-        <thead>
-          <tr>
-            <th>Sponsor Name</th>
-            <th>Tier</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th>Contact Person</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${sponsors.map(sponsor => `
-            <tr>
-              <td><strong>${sponsor.name}</strong></td>
-              <td><span class="status status--${sponsor.tier.toLowerCase()}">${sponsor.tier}</span></td>
-              <td>₹${sponsor.amount.toLocaleString()}</td>
-              <td><span class="status status--${sponsor.status === 'Confirmed' ? 'success' : 'warning'}">${sponsor.status}</span></td>
-              <td>${sponsor.contactPerson}</td>
-              <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${sponsor.notes}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-// Logistics Page
-function renderLogistics(container) {
-  const categories = ['All', 'Venue', 'Certificates', 'Kits', 'Equipment'];
-  
-  container.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-24);">
-      <h2>Logistics</h2>
-      ${canManageLogistics() ? `<button class="btn btn--primary" onclick="openAddLogisticsModal()">+ Add Item</button>` : ''}
-    </div>
-    
-    <div class="data-table">
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>Responsible Person</th>
-            <th>Due Date</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${logistics.map(item => {
-            const person = getUserById(item.responsiblePersonId);
-            return `
-              <tr>
-                <td><strong>${item.itemName}</strong></td>
-                <td><span class="status status--info">${item.category}</span></td>
-                <td><span class="status status--${item.status === 'Completed' || item.status === 'Received' ? 'success' : item.status === 'Ordered' ? 'warning' : 'info'}">${item.status}</span></td>
-                <td>${person.name}</td>
-                <td>${formatDate(item.dueDate)}</td>
-                <td style="max-width: 250px;">${item.notes}</td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-// Communication Page
-function renderCommunication(container) {
-  container.innerHTML = `
-    <h2 style="margin-bottom: var(--space-12);">Communication Hub</h2>
-    <p style="color: var(--color-text-secondary); margin-bottom: var(--space-32);">Quick access to all team communication channels</p>
-    
-    <div class="grid-2">
-      ${teams.map(team => {
-        const members = team.memberIds.map(id => getUserById(id));
         return `
           <div class="card">
             <div class="card__body">
-              <div style="display: flex; align-items: center; gap: var(--space-16); margin-bottom: var(--space-16);">
-                <div style="font-size: 48px;">${team.icon}</div>
-                <div>
-                  <h3 style="margin: 0;">${team.name}</h3>
-                  <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: var(--space-4) 0 0 0;">${members.length} members</p>
-                </div>
+              <div style="font-size: 48px; text-align: center;">${team.icon}</div>
+              <h3 style="text-align: center;">${team.name}</h3>
+              <p style="text-align: center; color: var(--color-text-secondary);">Lead: ${lead.name}</p>
+              <div class="progress-bar-container" style="margin: 16px 0;">
+                <div class="progress-bar color-1" style="width: ${teamProgress}%"></div>
               </div>
-              <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--space-16);">${team.description}</p>
-              <div style="display: flex; gap: var(--space-12);">
-                <a href="${team.whatsappLink}" target="_blank" class="btn btn--outline btn--full-width">📱 WhatsApp</a>
-                <a href="${team.telegramLink}" target="_blank" class="btn btn--primary btn--full-width">✈️ Telegram</a>
+              <div style="display: flex; justify-content: space-between;">
+                <span class="status status--todo">${todoCount} To Do</span>
+                <span class="status status--done">${doneCount} Done</span>
               </div>
             </div>
           </div>
@@ -872,363 +496,326 @@ function renderCommunication(container) {
   `;
 }
 
-// Analytics Page
-function renderAnalytics(container) {
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.status === 'Done').length;
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+// Other Render Functions (Events, Sponsors, etc.) - Stubbed for brevity
+// These would follow the same pattern of reading from `dbData`
+function renderEvents(container) { container.innerHTML = '<h2>Events</h2><p>Render function to be built.</p>'; }
+function renderSponsors(container) { container.innerHTML = '<h2>Sponsors</h2><p>Render function to be built.</sponsors>'; }
+function renderLogistics(container) { container.innerHTML = '<h2>Logistics</h2><p>Render function to be built.</p>'; }
+function renderCommunication(container) { container.innerHTML = '<h2>Communication</h2><p>Render function to be built.</p>'; }
+function renderAnalytics(container) { container.innerHTML = '<h2>Analytics</h2><p>Render function to be built.</p>'; }
+
+
+// --- 6. Modal & Action Handlers (Writing to DB) ---
+
+/**
+ * Opens the task detail modal.
+ * This modal allows EITHER full editing (Admins/Leads) OR only status updates (Volunteers).
+ */
+function openTaskDetailModal(taskId) {
+  const task = dbData.tasks[taskId];
+  if (!task) {
+    console.error("Task not found!");
+    return;
+  }
   
-  container.innerHTML = `
-    <h2 style="margin-bottom: var(--space-32);">Analytics & Reports</h2>
-    
-    <div class="stats-grid" style="margin-bottom: var(--space-32);">
-      <div class="stat-card">
-        <div class="stat-icon bg-1">📊</div>
-        <div class="stat-info">
-          <div class="stat-label">Completion Rate</div>
-          <div class="stat-value">${completionRate}%</div>
-        </div>
+  // Check permissions
+  const canManage = Permissions.canManageTask(task);
+  const canUpdateStatus = Permissions.canUpdateTaskStatus(task);
+  
+  if (!canUpdateStatus) {
+    // User has no permissions, show a read-only view
+    alert("You do not have permission to edit this task.");
+    // (A read-only modal could be shown here)
+    return;
+  }
+  
+  if (canManage) {
+    // If user is Admin or Team Lead, show the full edit modal
+    openTaskModal(taskId);
+  } else {
+    // If user is a Volunteer, show the simple status-update modal
+    openStatusUpdateModal(taskId);
+  }
+}
+
+/**
+ * Opens the FULL task editor (for Admins and Team Leads).
+ */
+function openTaskModal(taskId = null) {
+  const task = taskId ? dbData.tasks[taskId] : null;
+  const isEditing = !!task;
+
+  // Get users for the dropdown
+  // If Admin, show all users. If Lead, show only their team members.
+  let assignableUsers = getObjectValues(dbData.users);
+  if (currentUser.role === 'team_lead') {
+    assignableUsers = assignableUsers.filter(u => u.teamId === currentUser.teamId);
+  }
+  
+  // Get teams for the dropdown (Admin only)
+  let teamOptions = '';
+  if (currentUser.role === 'admin') {
+    teamOptions = `
+      <div class="form-group">
+        <label class="form-label">Team</label>
+        <select class="form-control" id="taskTeam" required>
+          ${getObjectValues(dbData.teams).map(t => `<option value="${t.id}" ${task && task.teamId === t.id ? 'selected' : ''}>${t.icon} ${t.name}</option>`).join('')}
+        </select>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-2">⚡</div>
-        <div class="stat-info">
-          <div class="stat-label">Active Teams</div>
-          <div class="stat-value">${teams.length}</div>
-        </div>
+    `;
+  }
+
+  showModal(isEditing ? 'Edit Task' : 'Create New Task', `
+    <form id="taskForm" data-id="${taskId || ''}">
+      <div class="form-group">
+        <label class="form-label">Task Title</label>
+        <input type="text" class="form-control" id="taskTitle" value="${task ? task.title : ''}" required>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-3">📅</div>
-        <div class="stat-info">
-          <div class="stat-label">Total Events</div>
-          <div class="stat-value">${events.length}</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon bg-4">💰</div>
-        <div class="stat-info">
-          <div class="stat-label">Total Funding</div>
-          <div class="stat-value">₹${sponsors.reduce((sum, s) => sum + s.amount, 0).toLocaleString()}</div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="grid-2">
-      <div class="progress-section">
-        <h3 class="section-title" style="margin-bottom: var(--space-20);">Team Performance</h3>
-        <div class="team-progress-list">
-          ${teams.map((team, index) => {
-            const teamProgress = calculateTeamProgress(team.id);
-            return `
-              <div class="team-progress-item">
-                <div class="team-info">
-                  <span class="team-icon">${team.icon}</span>
-                  <span class="team-name">${team.name}</span>
-                </div>
-                <div class="progress-bar-container">
-                  <div class="progress-bar color-${(index % 5) + 1}" style="width: ${teamProgress}%"></div>
-                </div>
-                <div class="progress-percentage-text">${teamProgress}%</div>
-              </div>
-            `;
-          }).join('')}
-        </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-control" id="taskDescription" rows="3" required>${task ? task.description : ''}</textarea>
       </div>
       
-      <div class="progress-section">
-        <h3 class="section-title" style="margin-bottom: var(--space-20);">Event Distribution</h3>
-        <div style="padding: var(--space-24);">
-          <div style="margin-bottom: var(--space-16);">
-            <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-8);">
-              <span>Technical Events</span>
-              <strong>${events.filter(e => e.type === 'Technical').length}</strong>
-            </div>
-            <div class="progress-bar-container">
-              <div class="progress-bar color-1" style="width: ${(events.filter(e => e.type === 'Technical').length / events.length) * 100}%"></div>
-            </div>
-          </div>
-          <div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-8);">
-              <span>Non-Technical Events</span>
-              <strong>${events.filter(e => e.type === 'Non-Technical').length}</strong>
-            </div>
-            <div class="progress-bar-container">
-              <div class="progress-bar color-2" style="width: ${(events.filter(e => e.type === 'Non-Technical').length / events.length) * 100}%"></div>
-            </div>
-          </div>
-        </div>
+      ${teamOptions} <div class="form-group">
+        <label class="form-label">Assignee</label>
+        <select class="form-control" id="taskAssignee" required>
+          ${assignableUsers.map(u => `<option value="${u.uid}" ${task && task.assigneeId === u.uid ? 'selected' : ''}>${u.name}</option>`).join('')}
+        </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">Due Date</label>
+        <input type="date" class="form-control" id="taskDueDate" value="${task ? task.dueDate : ''}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="form-control" id="taskPriority" required>
+          <option value="High" ${task && task.priority === 'High' ? 'selected' : ''}>High</option>
+          <option value="Medium" ${!task || task.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+          <option value="Low" ${task && task.priority === 'Low' ? 'selected' : ''}>Low</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn--outline" onclick="closeModal()">Cancel</button>
+        ${isEditing ? `<button type="button" class="btn btn--secondary" style="margin-right: auto;" onclick="handleDeleteTask('${taskId}')">Delete Task</button>` : ''}
+        <button type="submit" class="btn btn--primary">${isEditing ? 'Update Task' : 'Create Task'}</button>
+      </div>
+    </form>
+  `);
+  
+  // Attach submit handler
+  document.getElementById('taskForm').onsubmit = handleSaveTask;
+}
+
+/**
+ * Opens a simple modal for Volunteers to update status.
+ */
+function openStatusUpdateModal(taskId) {
+  const task = dbData.tasks[taskId];
+  
+  showModal('Update Task Status', `
+    <h3 style="margin-bottom: 16px;">${task.title}</h3>
+    <p>${task.description}</p>
+    <div class="form-group" style="margin-top: 24px;">
+      <label class="form-label">Set Status</label>
+      <select class="form-control" id="taskStatusSelect">
+        <option value="To Do" ${task.status === 'To Do' ? 'selected' : ''}>To Do</option>
+        <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+        <option value="Done" ${task.status === 'Done' ? 'selected' : ''}>Done</option>
+      </select>
     </div>
-  `;
+    <div class="modal-footer">
+      <button type="button" class="btn btn--outline" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn btn--primary" onclick="handleUpdateStatus('${taskId}')">Update Status</button>
+    </div>
+  `);
 }
 
-// Permission Helpers
-function canCreateTask() {
-  return currentUser.role === 'Admin' || currentUser.role === 'Team Lead';
-}
+/**
+ * Saves task data (Create/Update) to Firebase.
+ */
+function handleSaveTask(event) {
+  event.preventDefault();
+  const form = event.target;
+  
+  const taskId = form.dataset.id || db.ref('tasks').push().key; // Get new key if needed
+  const existingTask = dbData.tasks[taskId] || {};
 
-function canEditTask(task) {
-  if (currentUser.role === 'Admin') return true;
-  if (currentUser.role === 'Team Lead') {
-    const team = getTeamById(task.teamId);
-    return team.leadId === currentUser.id;
+  const taskData = {
+    id: taskId,
+    title: document.getElementById('taskTitle').value,
+    description: document.getElementById('taskDescription').value,
+    assigneeId: document.getElementById('taskAssignee').value,
+    dueDate: document.getElementById('taskDueDate').value,
+    priority: document.getElementById('taskPriority').value,
+    // If admin, use the form's team value. If lead, use their own teamId.
+    teamId: currentUser.role === 'admin' ? document.getElementById('taskTeam').value : currentUser.teamId,
+    // Preserve existing status on edit, or default to 'To Do'
+    status: existingTask.status || 'To Do',
+    updatedAt: new Date().toISOString()
+  };
+  
+  if (!existingTask.createdAt) {
+    taskData.createdAt = new Date().toISOString();
   }
-  return task.assigneeId === currentUser.id;
+
+  // Final permission check
+  if (!Permissions.canManageTask(taskData)) {
+    alert("Permission denied. Your role cannot create or edit tasks for this team.");
+    return;
+  }
+  
+  // Write to Firebase
+  db.ref(`tasks/${taskId}`).update(taskData)
+    .then(() => {
+      console.log("Task saved:", taskId);
+      closeModal();
+      // No need to refresh, real-time listener will handle it!
+    })
+    .catch(error => {
+      console.error("Error saving task:", error);
+      alert("Error saving task: " + error.message);
+    });
 }
 
-function canCreateEvent() {
-  return currentUser.role === 'Admin';
+/**
+ * Updates *only* the status of a task.
+ */
+function handleUpdateStatus(taskId) {
+  const newStatus = document.getElementById('taskStatusSelect').value;
+  const task = dbData.tasks[taskId];
+  
+  // Final permission check
+  if (!Permissions.canUpdateTaskStatus(task)) {
+    alert("Permission denied.");
+    return;
+  }
+  
+  // Write *only* the status
+  db.ref(`tasks/${taskId}/status`).set(newStatus)
+    .then(() => {
+      console.log("Status updated:", taskId);
+      closeModal();
+      // No need to refresh, real-time listener will handle it!
+    })
+    .catch(error => {
+      console.error("Error updating status:", error);
+      alert("Error updating status: " + error.message);
+    });
 }
 
-function canManageSponsors() {
-  return currentUser.role === 'Admin' || currentUser.team === 'Sponsorship';
+/**
+ * Deletes a task from Firebase.
+ */
+function handleDeleteTask(taskId) {
+  const task = dbData.tasks[taskId];
+  
+  if (!Permissions.canManageTask(task)) {
+    alert("You do not have permission to delete this task.");
+    return;
+  }
+  
+  if (confirm(`Are you sure you want to delete "${task.title}"?`)) {
+    db.ref(`tasks/${taskId}`).remove()
+      .then(() => {
+        console.log("Task deleted:", taskId);
+        closeModal();
+        // No need to refresh, real-time listener will handle it!
+      })
+      .catch(error => {
+        console.error("Error deleting task:", error);
+        alert("Error deleting task: " + error.message);
+      });
+  }
 }
 
-function canManageLogistics() {
-  return currentUser.role === 'Admin' || currentUser.team === 'Logistics';
+// Stub for creating an event
+function openCreateEventModal() {
+  alert("Event creation modal not implemented.");
+}
+
+
+// --- 7. Utility & Helper Functions ---
+
+// Updates the user avatar/name in the sidebar
+function updateUserProfileUI() {
+  const initials = getInitials(currentUser.name);
+  document.getElementById('sidebarAvatar').textContent = initials;
+  document.getElementById('headerAvatar').textContent = initials;
+  document.getElementById('sidebarUserName').textContent = currentUser.name;
+  document.getElementById('sidebarUserRole').textContent = currentUser.role.replace('_', ' ');
+}
+
+// Countdown Timer
+function startCountdown() {
+  const interval = setInterval(() => {
+    const now = new Date();
+    const diff = SYMPOSIUM_DATE - now;
+    
+    if (diff <= 0 || !document.getElementById('countdownDays')) {
+      clearInterval(interval);
+      return;
+    }
+    
+    document.getElementById('countdownDays').textContent = Math.floor(diff / (1000 * 60 * 60 * 24));
+    document.getElementById('countdownHours').textContent = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    document.getElementById('countdownMinutes').textContent = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    document.getElementById('countdownSeconds').textContent = Math.floor((diff % (1000 * 60)) / 1000);
+  }, 1000);
+}
+
+// Data Getters (safe access from cache)
+function getObjectValues(obj) { return obj ? Object.values(obj) : []; }
+function getUserById(uid) { return dbData.users[uid] || { name: 'Unknown' }; }
+function getTeamById(id) { return dbData.teams[id] || { name: 'Unknown', icon: '?' }; }
+
+function getInitials(name = "") { return name.split(' ').map(n => n[0]).join('').toUpperCase() || '?'; }
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(date);
+}
+function isUrgent(dueDate) {
+  const diff = new Date(dueDate) - new Date();
+  return (diff / (1000 * 60 * 60 * 24)) <= 3;
+}
+
+// Progress Calculators
+function calculateProgress(tasks) {
+  const total = tasks.length;
+  const completed = tasks.filter(t => t.status === 'Done').length;
+  return total > 0 ? Math.round((completed / total) * 100) : 0;
+}
+function calculateTeamProgress(teamId) {
+  const teamTasks = getObjectValues(dbData.tasks).filter(t => t.teamId === teamId);
+  return calculateProgress(teamTasks);
 }
 
 // Modal Functions
 function showModal(title, content) {
-  const modalContainer = document.getElementById('modalContainer');
-  modalContainer.innerHTML = `
+  document.getElementById('modalContainer').innerHTML = `
     <div class="modal-overlay" onclick="closeModalOnOverlay(event)">
       <div class="modal">
         <div class="modal-header">
           <h3 class="modal-title">${title}</h3>
           <button class="modal-close" onclick="closeModal()">✕</button>
         </div>
-        <div class="modal-body">
-          ${content}
-        </div>
+        <div class="modal-body">${content}</div>
       </div>
     </div>
   `;
 }
+function closeModal() { document.getElementById('modalContainer').innerHTML = ''; }
+function closeModalOnOverlay(event) { if (event.target.classList.contains('modal-overlay')) closeModal(); }
 
-function closeModal() {
-  document.getElementById('modalContainer').innerHTML = '';
-}
+// Mock Notification Functions
+function toggleNotificationPanel() { alert("Notification panel not implemented."); }
+function markAllNotificationsRead() { }
 
-function closeModalOnOverlay(event) {
-  if (event.target.classList.contains('modal-overlay')) {
-    closeModal();
-  }
-}
 
-function openCreateTaskModal(teamId = null) {
-  showModal('Create New Task', `
-    <form onsubmit="handleCreateTask(event)">
-      <div class="form-group">
-        <label class="form-label">Task Title</label>
-        <input type="text" class="form-control" id="taskTitle" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <textarea class="form-control" id="taskDescription" rows="3" required></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Team</label>
-        <select class="form-control" id="taskTeam" required>
-          ${teams.map(t => `<option value="${t.id}" ${teamId === t.id ? 'selected' : ''}>${t.icon} ${t.name}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Assignee</label>
-        <select class="form-control" id="taskAssignee" required>
-          ${users.filter(u => u.role !== 'Admin').map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Due Date</label>
-        <input type="date" class="form-control" id="taskDueDate" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Priority</label>
-        <select class="form-control" id="taskPriority" required>
-          <option value="High">High</option>
-          <option value="Medium" selected>Medium</option>
-          <option value="Low">Low</option>
-        </select>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn--outline" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn--primary">Create Task</button>
-      </div>
-    </form>
-  `);
-}
+// --- 8. Event Listeners (DOM Ready) ---
 
-function handleCreateTask(event) {
-  event.preventDefault();
-  
-  const newTask = {
-    id: tasks.length + 1,
-    title: document.getElementById('taskTitle').value,
-    description: document.getElementById('taskDescription').value,
-    teamId: parseInt(document.getElementById('taskTeam').value),
-    assigneeId: parseInt(document.getElementById('taskAssignee').value),
-    dueDate: document.getElementById('taskDueDate').value,
-    status: 'To Do',
-    priority: document.getElementById('taskPriority').value,
-    eventId: null,
-    files: []
-  };
-  
-  tasks.push(newTask);
-  addNotification('task_created', `New task "${newTask.title}" created`, newTask.id);
-  closeModal();
-  navigateToPage(currentPage);
-}
-
-function openCreateEventModal() {
-  showModal('Add New Event', `
-    <form onsubmit="handleCreateEvent(event)">
-      <div class="form-group">
-        <label class="form-label">Event Name</label>
-        <input type="text" class="form-control" id="eventName" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Type</label>
-        <select class="form-control" id="eventType" required>
-          <option value="Technical">Technical</option>
-          <option value="Non-Technical">Non-Technical</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Date</label>
-        <input type="date" class="form-control" id="eventDate" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Time</label>
-        <input type="time" class="form-control" id="eventTime" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Venue</label>
-        <input type="text" class="form-control" id="eventVenue" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Coordinator</label>
-        <select class="form-control" id="eventCoordinator" required>
-          ${users.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <textarea class="form-control" id="eventDescription" rows="3" required></textarea>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn--outline" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn--primary">Create Event</button>
-      </div>
-    </form>
-  `);
-}
-
-function handleCreateEvent(event) {
-  event.preventDefault();
-  
-  const newEvent = {
-    id: events.length + 1,
-    name: document.getElementById('eventName').value,
-    type: document.getElementById('eventType').value,
-    date: document.getElementById('eventDate').value,
-    time: document.getElementById('eventTime').value,
-    venue: document.getElementById('eventVenue').value,
-    coordinatorId: parseInt(document.getElementById('eventCoordinator').value),
-    description: document.getElementById('eventDescription').value
-  };
-  
-  events.push(newEvent);
-  closeModal();
-  navigateToPage('events');
-}
-
-function openAddSponsorModal() {
-  showModal('Add Sponsor', '<p style="text-align: center; padding: var(--space-24);">Sponsor form would go here</p>');
-}
-
-function openAddLogisticsModal() {
-  showModal('Add Logistics Item', '<p style="text-align: center; padding: var(--space-24);">Logistics item form would go here</p>');
-}
-
-// Notification Panel
-function toggleNotificationPanel() {
-  const panel = document.getElementById('notificationPanel');
-  panel.classList.toggle('open');
-  
-  if (panel.classList.contains('open')) {
-    renderNotifications();
-  }
-}
-
-function renderNotifications() {
-  const list = document.getElementById('notificationList');
-  
-  if (notifications.length === 0) {
-    list.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-24);">No notifications</p>';
-    return;
-  }
-  
-  list.innerHTML = notifications.map(notif => {
-    const timeAgo = getTimeAgo(notif.timestamp);
-    const icons = {
-      task_created: '✨',
-      task_updated: '🔄',
-      task_completed: '✅',
-      deadline_reminder: '⚠️'
-    };
-    
-    return `
-      <div class="notification-item ${notif.read ? '' : 'unread'}" onclick="markNotificationAsRead(${notif.id})">
-        <div class="notification-icon">${icons[notif.type] || '🔔'}</div>
-        <div class="notification-message">${notif.message}</div>
-        ${notif.taskName ? `
-          <div class="notification-meta">
-            <strong>${notif.taskName}</strong> • ${notif.team}
-          </div>
-        ` : ''}
-        <div class="notification-timestamp">${timeAgo}</div>
-      </div>
-    `;
-  }).join('');
-}
-
-function getTimeAgo(timestamp) {
-  const now = new Date();
-  const time = new Date(timestamp);
-  const diff = now - time;
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  
-  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-  return 'Just now';
-}
-
-function markNotificationAsRead(notifId) {
-  const notif = notifications.find(n => n.id === notifId);
-  if (notif) {
-    notif.read = true;
-    updateNotificationBadge();
-    renderNotifications();
-  }
-}
-
-function markAllNotificationsRead() {
-  notifications.forEach(n => n.read = true);
-  updateNotificationBadge();
-  renderNotifications();
-}
-
-// Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
   // Login form
-  const loginForm = document.getElementById('loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', handleLogin);
-  }
+  document.getElementById('loginForm').addEventListener('submit', handleLogin);
   
   // Navigation
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -1239,13 +826,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // Logout
-  document.getElementById('logoutBtn').addEventListener('click', function() {
-    currentUser = null;
-    document.getElementById('mainDashboard').style.display = 'none';
-    document.getElementById('loginPage').style.display = 'flex';
-    document.getElementById('emailInput').value = '';
-    document.getElementById('passwordInput').value = '';
-  });
+  document.getElementById('logoutBtn').addEventListener('click', handleLogout);
   
   // Notification bell
   document.getElementById('notificationBell').addEventListener('click', toggleNotificationPanel);
@@ -1256,14 +837,5 @@ document.addEventListener('DOMContentLoaded', function() {
   // Sidebar toggle for mobile
   document.getElementById('sidebarToggle').addEventListener('click', function() {
     document.getElementById('sidebar').classList.toggle('open');
-  });
-  
-  // Close notification panel when clicking outside
-  document.addEventListener('click', function(e) {
-    const panel = document.getElementById('notificationPanel');
-    const bell = document.getElementById('notificationBell');
-    if (!panel.contains(e.target) && !bell.contains(e.target)) {
-      panel.classList.remove('open');
-    }
   });
 });
