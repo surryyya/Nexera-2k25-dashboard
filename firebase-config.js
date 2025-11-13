@@ -18,11 +18,10 @@ if (!firebase.apps.length) {
 }
 
 // Reference to database
-const db = firebase.database();
+// This is the fix: "db" (not "database")
+const db = firebase.database(); 
 const auth = firebase.auth();
 
 console.log('✅ Firebase initialized successfully');
 console.log('📊 Database URL:', firebaseConfig.databaseURL);
 console.log('🔐 Project ID:', firebaseConfig.projectId);
-
-// The extra "}" at the end is removed
