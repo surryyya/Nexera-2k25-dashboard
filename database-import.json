@@ -1,0 +1,108 @@
+{
+  "users": {
+    "csPoWbS9H2fskU42uRGWOszxQWe2": {
+      "name": "Surya Prakash K",
+      "email": "71762304123@cit.edu.in",
+      "role": "admin",
+      "teamId": null
+    },
+    "KwGXVb85l0ea7LXpe11xtF9liZ43": {
+      "name": "Sanjeevi",
+      "email": "71762304115@cit.edu.in",
+      "role": "team_lead",
+      "teamId": "t1"
+    },
+    "KTRaTRMuCLaBNn9QopX6DDEGQux1": {
+      "name": "kabilan",
+      "email": "volunteer@cit.edu.in",
+      "role": "volunteer",
+      "teamId": "t1"
+    }
+  },
+  "teams": {
+    "t1": {
+      "id": "t1",
+      "name": "Events",
+      "leadId": "KwGXVb85l0ea7LXpe11xtF9liZ43",
+      "icon": "🎯",
+      "description": "Manages all technical and non-technical events",
+      "whatsappLink": "https://chat.whatsapp.com/example"
+    },
+    "t2": {
+      "id": "t2",
+      "name": "Logistics",
+      "leadId": "KwGXVb85l0ea7LXpe11xtF9liZ43",
+      "icon": "⚙️",
+      "description": "Handles venue setup, kits, and equipment",
+      "whatsappLink": "https://chat.whatsapp.com/example"
+    },
+    "t3": {
+      "id": "t3",
+      "name": "Sponsorship",
+      "leadId": "KwGXVb85l0ea7LXpe11xtF9liZ43",
+      "icon": "💰",
+      "description": "Coordinates with sponsors and manages funding",
+      "whatsappLink": "https.chat.whatsapp.com/example"
+    }
+  },
+  "tasks": {
+    "task1": {
+      "id": "task1",
+      "title": "Finalize Event Schedule",
+      "description": "Coordinate with all leads for final event timings.",
+      "status": "In Progress",
+      "priority": "High",
+      "teamId": "t1",
+      "assigneeId": "KwGXVb85l0ea7LXpe11xtF9liZ43",
+      "dueDate": "2025-11-20",
+      "createdAt": "2025-11-10T10:00:00Z"
+    },
+    "task2": {
+      "id": "task2",
+      "title": "Setup Projector for Workshop",
+      "description": "Get projector and HDMI cables from AV room.",
+      "status": "To Do",
+      "priority": "Medium",
+      "teamId": "t1",
+      "assigneeId": "KTRaTRMuCLaBNn9QopX6DDEGQux1",
+      "dueDate": "2025-11-26",
+      "createdAt": "2025-11-10T11:00:00Z"
+    },
+    "task3": {
+      "id": "task3",
+      "title": "Book Main Auditorium",
+      "description": "Confirm booking with admin office for Nov 27th AM.",
+      "status": "To Do",
+      "priority": "High",
+      "teamId": "t2",
+      "assigneeId": "KwGXVb85l0ea7LXpe11xtF9liZ43",
+      "dueDate": "2025-11-15",
+      "createdAt": "2025-11-10T12:00:00Z"
+    }
+  },
+  "sponsors": {
+    "sponsor1": {
+      "id": "sponsor1",
+      "name": "Tech Innovators Inc.",
+      "tier": "Platinum",
+      "amount": 50000,
+      "status": "Confirmed"
+    }
+  },
+  "logistics": {
+    "logi1": {
+      "id": "logi1",
+      "itemName": "Participant Kits",
+      "status": "Ordered",
+      "quantity": 500
+    }
+  },
+  "events": {
+    "event1": {
+      "id": "event1",
+      "name": "TechQuest Hackathon",
+      "type": "Technical",
+      "date": "2025-11-27"
+    }
+  }
+}
