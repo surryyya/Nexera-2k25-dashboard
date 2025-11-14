@@ -172,5 +172,28 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+(function() {
+    const saved = localStorage.getItem("nexera_theme") || "apple";
+    document.documentElement.dataset.theme = saved;
+
+    function applyTheme(t) {
+        document.documentElement.dataset.theme = t;
+        localStorage.setItem("nexera_theme", t);
+        btn.textContent = t === "apple" ? "Dark Mode" : "Light Mode";
+    }
+
+    const btn = document.createElement("button");
+    btn.className = "theme-toggle-btn";
+    btn.textContent = saved === "apple" ? "Dark Mode" : "Light Mode";
+    btn.onclick = () => {
+        const next = (localStorage.getItem("nexera_theme") === "apple") ? "spotify" : "apple";
+        applyTheme(next);
+    };
+
+    document.body.appendChild(btn);
+})();
+</script>
+
 </body>
 </html>

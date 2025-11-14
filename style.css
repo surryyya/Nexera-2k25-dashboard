@@ -1,159 +1,234 @@
-/* Natural, human-friendly theme — replaces AI-ish styling */
+/* =======================================================
+   ✨ NEXERA 2K25 — Dual Theme System
+   Themes: Apple Light + Spotify Dark
+   Author: ChatGPT (Custom Build)
+   ======================================================= */
 
-/* --- Root tokens (simple, calm palette) --- */
-:root{
-  --color-background: #f5f7fa;   /* soft off-white page bg */
-  --color-surface: #ffffff;      /* card / surface */
-  --color-text: #222529;         /* primary text */
-  --color-text-secondary: #6b7280;
-  --color-border: #e6e9ee;
-  --color-accent: #3b82f6;       /* calm blue accent */
-  --color-accent-700: #2563eb;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-
-  --font-family-base: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
-
-  --space-4: 4px;
-  --space-8: 8px;
-  --space-12: 12px;
-  --space-16: 16px;
-  --space-20: 20px;
-  --space-24: 24px;
-  --space-32: 32px;
-
-  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.04);
-  --shadow-md: 0 6px 18px rgba(16, 24, 40, 0.06);
-
-  --duration-fast: 150ms;
-  --duration-normal: 250ms;
-  --ease-standard: cubic-bezier(.16,1,.3,1);
+/* ===============================
+   Base Layout (Shared)
+   =============================== */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Use Inter from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-
-html{box-sizing:border-box;font-family:var(--font-family-base);font-size:14px;background:var(--color-background);color:var(--color-text);-webkit-font-smoothing:antialiased;}
-*,*::before,*::after{box-sizing:inherit}
-
-/* Headings */
-h1,h2,h3,h4,h5,h6{margin:0;color:var(--color-text);font-weight:600;line-height:1.2}
-h1{font-size:28px} h2{font-size:22px} h3{font-size:18px}
-
-/* Links */
-a{color:var(--color-accent);text-decoration:none}
-a:hover{text-decoration:underline;color:var(--color-accent-700)}
-
-/* Buttons (flat, natural) */
-.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:8px;border:none;cursor:pointer;font-weight:600;transition:all var(--duration-fast) var(--ease-standard)}
-.btn:focus{outline:2px solid rgba(59,130,246,0.12);outline-offset:2px}
-.btn--primary{background:var(--color-accent);color:#fff;box-shadow:none}
-.btn--primary:hover{background:var(--color-accent-700);transform:translateY(-1px)}
-.btn--secondary{background:transparent;color:var(--color-text);border:1px solid var(--color-border)}
-.btn--outline{background:transparent;color:var(--color-text);border:1px solid var(--color-border)}
-
-/* Forms */
-.form-control{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);transition:border-color var(--duration-fast)}
-.form-control:focus{border-color:var(--color-accent);box-shadow:0 0 0 4px rgba(59,130,246,0.06);outline:none}
-
-/* Cards: subtle, minimal shadows and thin borders */
-.card{background:var(--color-surface);border-radius:var(--radius-lg);border:1px solid var(--color-border);box-shadow:var(--shadow-sm);overflow:hidden;transition:box-shadow var(--duration-normal)}
-.card__body{padding:var(--space-16)}
-.card__header{padding:var(--space-12);border-bottom:1px solid var(--color-border);background:transparent}
-
-/* Status badges (soft) */
-.status{display:inline-flex;align-items:center;padding:6px 10px;border-radius:9999px;font-weight:600;font-size:13px}
-.status--success{background:rgba(16,185,129,0.08);color:var(--color-success);border:1px solid rgba(16,185,129,0.12)}
-.status--warning{background:rgba(245,158,11,0.06);color:var(--color-warning);border:1px solid rgba(245,158,11,0.10)}
-.status--error{background:rgba(239,68,68,0.06);color:var(--color-error);border:1px solid rgba(239,68,68,0.10)}
-
-/* Layout containers */
-.container{max-width:1200px;margin:0 auto;padding:0 var(--space-16)}
-.page-content{padding:var(--space-24);}
-
-/* Login page: calm split layout */
-.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:var(--space-20)}
-.login-container{width:100%;max-width:1000px;background:transparent;display:flex;gap:var(--space-20);align-items:stretch}
-
-/* Left visual panel: replace gradient with calm solid + simple accent shapes */
-.login-left{flex:1;background:linear-gradient(180deg, rgba(59,130,246,0.08), rgba(59,130,246,0.04));padding:var(--space-24);border-radius:12px;display:flex;flex-direction:column;justify-content:center}
-.login-brand{z-index:1;text-align:left}
-.brand-title{font-size:28px;color:var(--color-text);font-weight:700;margin-bottom:8px}
-.brand-tagline{color:var(--color-text-secondary);margin-bottom:12px}
-
-/* remove particle / floaty animations for natural look */
-.particle, .brand-icon{display:none}
-
-/* Right login card */
-.login-right{flex:1;display:flex;align-items:center;justify-content:center}
-.login-form-card{width:100%;max-width:420px;background:var(--color-surface);border-radius:12px;padding:var(--space-20);border:1px solid var(--color-border);box-shadow:var(--shadow-md)}
-.login-form-card h2{margin-bottom:8px}
-.login-subtitle{color:var(--color-text-secondary);margin-bottom:16px;font-size:14px}
-
-/* Demo users area */
-.demo-users{margin-top:18px;padding-top:12px;border-top:1px solid var(--color-border)}
-.demo-badge{display:inline-block;padding:6px 10px;background:transparent;border-radius:8px;border:1px dashed var(--color-border);font-family:var(--font-family-mono);color:var(--color-text-secondary);font-size:13px}
-
-/* Dashboard layout: subtle, readable */
-.dashboard{display:flex;min-height:100vh;background:var(--color-background)}
-.sidebar{width:240px;background:var(--color-surface);border-right:1px solid var(--color-border);padding:16px;position:fixed;left:0;top:0;bottom:0;overflow:auto}
-.sidebar-header{padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--color-border)}
-.sidebar-brand{font-weight:700;color:var(--color-text);font-size:16px}
-.nav-item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;color:var(--color-text-secondary);cursor:pointer}
-.nav-item:hover{background:rgba(16,24,40,0.02);color:var(--color-text)}
-.nav-item.active{background:rgba(59,130,246,0.08);color:var(--color-accent)}
-
-/* Main content */
-.main-content{flex:1;margin-left:240px;display:flex;flex-direction:column}
-.header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--color-border);background:transparent;position:sticky;top:0;z-index:10}
-.header-title{font-size:18px;font-weight:600;color:var(--color-text)}
-
-/* Welcome banner: simplified */
-.welcome-banner{background:linear-gradient(90deg, rgba(59,130,246,0.06), rgba(16,185,129,0.02));padding:18px;border-radius:10px;margin:20px 0;display:flex;align-items:center;justify-content:space-between}
-.welcome-title{font-size:20px;color:var(--color-text);margin:0}
-.role-badge{background:transparent;border-radius:9999px;padding:6px 12px;border:1px solid var(--color-border);color:var(--color-text-secondary)}
-
-/* Stats grid: neutral cards */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
-.stat-card{background:var(--color-surface);padding:16px;border-radius:10px;border:1px solid var(--color-border);display:flex;gap:12px;align-items:center}
-.stat-icon{width:52px;height:52px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(59,130,246,0.06);color:var(--color-accent);font-weight:700}
-.stat-value{font-size:20px;font-weight:700;color:var(--color-text)}
-.stat-label{font-size:13px;color:var(--color-text-secondary)}
-
-/* Progress / bars — tone down shimmer */
-.progress-section{background:var(--color-surface);padding:16px;border-radius:10px;border:1px solid var(--color-border)}
-.progress-bar-container{height:10px;background:rgba(16,24,40,0.03);border-radius:9999px;overflow:hidden}
-.progress-bar{height:100%;border-radius:9999px;background:linear-gradient(90deg,var(--color-accent),var(--color-accent-700));transition:width 600ms ease}
-
-/* Tasks / list: less motion */
-.task-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;background:transparent;border:1px solid var(--color-border)}
-.task-item:hover{background:rgba(16,24,40,0.02);transform:none;box-shadow:none}
-
-/* Kanban columns: softer */
-.kanban-column{background:transparent;border-radius:10px;padding:12px;border:1px dashed rgba(16,24,40,0.03);min-height:300px}
-
-/* Notifications panel: slide from right but muted */
-.notification-panel{position:fixed;right:-380px;top:0;width:380px;height:100%;background:var(--color-surface);box-shadow:var(--shadow-md);transition:right var(--duration-normal) var(--ease-standard}
-.notification-panel.open{right:0}
-
-/* Small utilities */
-.hidden{display:none}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.badge{display:inline-flex;align-items:center;padding:6px 8px;border-radius:9999px;background:rgba(16,24,40,0.04);color:var(--color-text-secondary);font-weight:600}
-
-/* Responsive tweaks */
-@media (max-width:900px){
-  .sidebar{position:relative;width:100%;height:auto;border-right:none}
-  .main-content{margin-left:0}
-  .login-container{flex-direction:column}
+* {
+  box-sizing: border-box;
+  transition: background .2s ease, color .2s ease, border .2s ease;
 }
 
-/* Minor polish */
-.btn--primary:active{transform:translateY(0)}
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 240px;
+  padding: 20px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 240px;
+  padding: 24px;
+}
+
+.card {
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid transparent;
+}
+
+.form-control {
+  padding: 12px;
+  border-radius: 10px;
+  width: 100%;
+  border: 1px solid transparent;
+}
+
+.btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.particle,
+.brand-icon {
+  display: none !important;
+}
+
+.nav-item {
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+
+/* =======================================================
+   🎨 THEME 1 — APPLE LIGHT
+   ======================================================= */
+[data-theme="apple"] {
+  --bg: #f6f7f9;
+  --surface: rgba(255,255,255,0.92);
+  --text: #1b1d21;
+  --muted: #61656c;
+  --accent: #2970ff;
+  --accent-dark: #1e5de0;
+  --border: rgba(0,0,0,0.08);
+  --shadow-soft: 0 8px 24px rgba(0,0,0,0.05);
+}
+
+[data-theme="apple"] body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+[data-theme="apple"] .sidebar {
+  background: rgba(255,255,255,0.6);
+  border-right: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="apple"] .card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+[data-theme="apple"] .form-control {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+[data-theme="apple"] .btn--primary {
+  background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+  color: white;
+  box-shadow: 0 6px 18px rgba(41,112,255,0.18);
+}
+
+[data-theme="apple"] .btn--primary:hover {
+  transform: translateY(-2px);
+}
+
+[data-theme="apple"] .nav-item {
+  color: var(--muted);
+}
+
+[data-theme="apple"] .nav-item:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+[data-theme="apple"] .nav-item.active {
+  background: rgba(41,112,255,0.15);
+  color: var(--accent);
+}
+
+
+/* =======================================================
+   🎨 THEME 2 — SPOTIFY DARK
+   ======================================================= */
+[data-theme="spotify"] {
+  --bg: #0e0f11;
+  --surface: #16181c;
+  --text: #f5f5f5;
+  --muted: #9ca3af;
+  --accent: #1db954;
+  --accent-dark: #17a64b;
+  --border: rgba(255,255,255,0.06);
+  --shadow-deep: 0 8px 30px rgba(0,0,0,0.55);
+}
+
+[data-theme="spotify"] body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+[data-theme="spotify"] .sidebar {
+  background: rgba(0,0,0,0.25);
+  border-right: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="spotify"] .card {
+  background: linear-gradient(180deg, var(--surface), #121316);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-deep);
+}
+
+[data-theme="spotify"] .form-control {
+  background: #111214;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text);
+}
+
+[data-theme="spotify"] .btn--primary {
+  background: var(--accent);
+  color: #000;
+  font-weight: 700;
+}
+
+[data-theme="spotify"] .btn--primary:hover {
+  background: var(--accent-dark);
+  transform: translateY(-2px);
+}
+
+[data-theme="spotify"] .nav-item {
+  color: var(--muted);
+}
+
+[data-theme="spotify"] .nav-item:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+[data-theme="spotify"] .nav-item.active {
+  background: rgba(29,185,84,0.12);
+  color: var(--accent);
+}
+
+
+/* =======================================================
+   🌙 THEME TOGGLE BUTTON
+   ======================================================= */
+
+.theme-toggle-btn {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  z-index: 9999;
+  backdrop-filter: blur(10px);
+}
+
+[data-theme="apple"] .theme-toggle-btn {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+[data-theme="spotify"] .theme-toggle-btn {
+  background: #1f1f1f;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text);
+}
