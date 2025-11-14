@@ -1,13 +1,15 @@
-// --- Configuration ---
-const SYMPOSIUM_DATE = new Date('2025-11-27T10:00:00');
+// app.js - DB-based authentication version (no Firebase Auth required)
 
-// --- Application State ---
-let currentUser = null; // Will hold { uid, name, email, role, teamId }
+// ---------------- CONFIG ----------------
+const SYMPOSIUM_DATE = new Date('2026-02-26T10:00:00'); // adjust as needed
+// NOTE: COLLEGE_DOMAIN is kept for optional checks, but DB-based login does not enforce it
+const COLLEGE_DOMAIN = '@cit.edu.in';
+
+// ---------------- STATE ----------------
+let currentUser = null; // { uid: dbKey, name, email, role, teamId }
 let currentPage = 'dashboard';
-let notifications = []; // Mock notifications
+let notifications = [];
 
-// --- Real-Time Data Cache ---
-// This object will be kept in sync with Firebase automatically
 let dbData = {
   users: {},
   teams: {},
@@ -17,291 +19,341 @@ let dbData = {
   logistics: {}
 };
 
-// --- 1. Authentication & Role Loading ---
-
-// This is the main entry point for the app
-auth.onAuthStateChanged(async (user) => {
-  if (user) {
-    // 1. User is logged in, fetch their profile from the DB
-    try {
-      const snapshot = await db.ref(`/users/${user.uid}`).once('value');
-      if (snapshot.exists()) {
-        // 2. Store user profile (with role) in `currentUser`
-        currentUser = { uid: user.uid, ...snapshot.val() };
-        console.log(`Role loaded: ${currentUser.role}`);
-        
-        // 3. Start real-time listeners for all data
-        initializeRealTimeListeners();
-        
-        // 4. Show the main app
-        document.getElementById('loginPage').style.display = 'none';
-        document.getElementById('mainDashboard').style.display = 'flex';
-        updateUserProfileUI();
-        startCountdown();
-        
-        // 5. Navigate to the default page
-        navigateToPage('dashboard');
-      } else {
-        // User exists in Auth, but not in DB (error state)
-        console.error("User profile not found in database.");
-        alert("Your user profile is not configured. Please contact an admin.");
-        auth.signOut();
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-      auth.signOut();
-    }
-  } else {
-    // 0. User is logged out, show the login page
-    currentUser = null;
-    document.getElementById('mainDashboard').style.display = 'none';
-    document.getElementById('loginPage').style.display = 'flex';
-    
-    // Detach all listeners when logged out
-    db.ref().off();
+// ----------------- UTIL HELPERS -----------------
+function getObjectValues(obj = {}) {
+  try {
+    return Object.values(obj);
+  } catch (e) {
+    return [];
   }
-});
+}
 
-// Handles the login form submission
-function handleLogin(event) {
-  event.preventDefault();
-  
-  const email = document.getElementById('emailInput').value.trim();
-  const password = document.getElementById('passwordInput').value;
+function getUserById(uid) {
+  return dbData.users[uid] || { name: 'Unknown', email: '', role: 'volunteer', teamId: null };
+}
+
+function getUserByEmail(email) {
+  const users = getObjectValues(dbData.users);
+  return users.find(u => u.email && u.email.toLowerCase() === (email || '').toLowerCase());
+}
+
+function getTeamById(id) {
+  return dbData.teams[id] || { id, name: 'Unknown', icon: '❓' };
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString();
+}
+
+function isUrgent(dueDate) {
+  if (!dueDate) return false;
+  const diff = new Date(dueDate) - new Date();
+  return diff <= 1000 * 60 * 60 * 24 * 3; // within 3 days
+}
+
+function calculateProgress(tasks) {
+  if (!tasks || tasks.length === 0) return 0;
+  const done = tasks.filter(t => t.status === 'Done').length;
+  return Math.round((done / tasks.length) * 100);
+}
+
+function calculateTeamProgress(teamId) {
+  const tasks = getObjectValues(dbData.tasks).filter(t => t.teamId === teamId);
+  if (tasks.length === 0) return 0;
+  const done = tasks.filter(t => t.status === 'Done').length;
+  return Math.round((done / tasks.length) * 100);
+}
+
+// ---------------- DB-BASED AUTH (MAIN) ----------------
+
+// Show login UI (default)
+function showLoginPage() {
+  currentUser = null;
+  db.ref().off(); // detach listeners
+  document.getElementById('mainDashboard').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+}
+
+// Show dashboard after successful DB login
+function showDashboardAfterLogin() {
+  initializeRealTimeListeners();
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('mainDashboard').style.display = 'flex';
+  updateUserProfileUI();
+  startCountdown();
+  navigateToPage('dashboard');
+}
+
+// Handle login form submission (DB-based)
+async function handleLogin(event) {
+  if (event && event.preventDefault) event.preventDefault();
+
+  const emailEl = document.getElementById('emailInput');
+  const passwordEl = document.getElementById('passwordInput');
   const loginButton = document.getElementById('loginButton');
   const loginErrorMsg = document.getElementById('loginErrorMessage');
-  
+
+  const email = emailEl ? emailEl.value.trim() : '';
+  const password = passwordEl ? passwordEl.value : '';
+
   loginErrorMsg.textContent = '';
   loginErrorMsg.classList.remove('show');
+
+  if (!email) {
+    loginErrorMsg.textContent = 'Please enter your email.';
+    loginErrorMsg.classList.add('show');
+    return;
+  }
+  if (!password) {
+    loginErrorMsg.textContent = 'Please enter your password.';
+    loginErrorMsg.classList.add('show');
+    return;
+  }
+
   loginButton.textContent = 'Signing In...';
   loginButton.disabled = true;
 
-  auth.signInWithEmailAndPassword(email, password)
-    .then(userCredential => {
-      // Login successful. onAuthStateChanged listener will handle the rest.
-      console.log("Login successful");
-    })
-    .catch(error => {
-      loginErrorMsg.textContent = error.message;
+  try {
+    // Query DB for the user (by email)
+    const usersRef = db.ref('/users');
+    const query = usersRef.orderByChild('email').equalTo(email);
+    const snapshot = await query.once('value');
+
+    if (!snapshot.exists()) {
+      loginErrorMsg.textContent = 'User not found. Contact admin to create account.';
       loginErrorMsg.classList.add('show');
       loginButton.textContent = 'Sign In';
       loginButton.disabled = false;
-    });
+      return;
+    }
+
+    const matches = snapshot.val();
+    const dbUid = Object.keys(matches)[0];
+    const profile = matches[dbUid];
+
+    // If password doesn't exist in DB, create a temporary password and save it
+    // (developer convenience) - you may remove this behavior if undesired
+    if (!profile.password) {
+      const tempPwd = Math.random().toString(36).slice(2, 10);
+      await usersRef.child(dbUid).update({ password: tempPwd });
+      profile.password = tempPwd;
+      console.warn(`No password present for ${email}. Created temp password.`);
+    }
+
+    if (profile.password !== password) {
+      loginErrorMsg.textContent = 'Incorrect password.';
+      loginErrorMsg.classList.add('show');
+      loginButton.textContent = 'Sign In';
+      loginButton.disabled = false;
+      return;
+    }
+
+    // Build currentUser from DB profile (use DB key as uid)
+    currentUser = {
+      uid: dbUid,
+      email: profile.email,
+      name: profile.name || (profile.email ? profile.email.split('@')[0] : 'User'),
+      role: profile.role || 'volunteer',
+      teamId: profile.teamId || null
+    };
+
+    console.log(`DB login success: ${currentUser.name} (${currentUser.role})`);
+    showDashboardAfterLogin();
+
+  } catch (err) {
+    console.error('DB login error:', err);
+    loginErrorMsg.textContent = 'An error occurred during login. See console.';
+    loginErrorMsg.classList.add('show');
+  } finally {
+    loginButton.textContent = 'Sign In';
+    loginButton.disabled = false;
+  }
 }
 
-// Handles the logout button
+// Logout for DB auth
 function handleLogout() {
-  auth.signOut();
+  currentUser = null;
+  db.ref().off();
+  document.getElementById('mainDashboard').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+  const form = document.getElementById('loginForm');
+  if (form) form.reset();
+  console.log('Logged out (DB auth)');
 }
 
-// --- 2. Real-Time Data Sync ---
-// (As described in "Real-Time Features Using Firebase")
+// Hook the login form
+document.addEventListener('DOMContentLoaded', () => {
+  const loginFormEl = document.getElementById('loginForm');
+  if (loginFormEl) {
+    try {
+      loginFormEl.removeEventListener('submit', handleLogin);
+    } catch (e) {}
+    loginFormEl.addEventListener('submit', handleLogin);
+  }
 
-/**
- * Attaches real-time listeners to all main data nodes.
- * When data changes, it updates the `dbData` cache and re-renders the UI.
- */
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.removeEventListener('click', handleLogout);
+    logoutBtn.addEventListener('click', handleLogout);
+  }
+
+  // Ensure we start on login page
+  showLoginPage();
+
+  // Wire nav clicks (single delegate)
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      const page = item.dataset.page;
+      if (page) navigateToPage(page);
+    });
+  });
+});
+
+// ----------------- REAL-TIME DATA SYNC -----------------
 function initializeRealTimeListeners() {
   const nodes = ['users', 'teams', 'tasks', 'events', 'sponsors', 'logistics'];
-  
+
   nodes.forEach(node => {
     db.ref(node).on('value', (snapshot) => {
-      console.log(`Real-time data updated for: /${node}`);
       dbData[node] = snapshot.val() || {};
-      
-      // When data changes, refresh the current page
-      // We check for `currentUser` to prevent errors during logout
-      if (currentUser) {
-        refreshCurrentPage();
-      }
+      // Update UI if user is logged in
+      if (currentUser) refreshCurrentPage();
     });
   });
 }
 
-/**
- * Re-renders the content of the currently active page.
- */
 function refreshCurrentPage() {
-  navigateToPage(currentPage, true); // `true` signals this is a refresh
+  navigateToPage(currentPage, true);
 }
 
-// --- 3. Role-Based Access Control (RBAC) ---
-// (As described in "Access Control in Code")
-
-/**
- * A helper object to check permissions based on the current user's role.
- */
+// ----------------- PERMISSIONS / RBAC -----------------
 const Permissions = {
-  // Can create, edit details, assign, or delete a task
   canManageTask: (task) => {
+    if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
-    // `task` is null when checking "Create" permission
-    if (!task && currentUser.role === 'team_lead') return true; 
-    // `task` exists when checking "Edit/Delete"
+    if (!task && currentUser.role === 'team_lead') return true;
     if (task && currentUser.role === 'team_lead' && task.teamId === currentUser.teamId) return true;
     return false;
   },
 
-  // Can only update the 'status' or 'comments'
   canUpdateTaskStatus: (task) => {
-    if (Permissions.canManageTask(task)) return true; // Admins/Leads can also update status
+    if (!currentUser) return false;
+    if (Permissions.canManageTask(task)) return true;
     if (currentUser.role === 'volunteer' && task.assigneeId === currentUser.uid) return true;
     return false;
   },
 
-  canManageTeams: () => currentUser.role === 'admin',
-  
+  canManageTeams: () => currentUser && currentUser.role === 'admin',
+
   canManageSponsors: () => {
-    // Example: Only Admin or Sponsorship team lead
+    if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
     const team = dbData.teams[currentUser.teamId] || {};
-    if (currentUser.role === 'team_lead' && team.name === 'Sponsorship') return true;
-    return false;
-  },
-  
-  canManageLogistics: () => {
-    if (currentUser.role === 'admin') return true;
-    const team = dbData.teams[currentUser.teamId] || {};
-    if (currentUser.role === 'team_lead' && team.name === 'Logistics') return true;
+    if (currentUser.role === 'team_lead' && team.name === 'Sponsorship Team') return true;
     return false;
   },
 
-  canCreateEvent: () => currentUser.role === 'admin',
-  
+  canManageLogistics: () => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') return true;
+    if (currentUser.role === 'team_lead') return true;
+    return false;
+  },
+
+  canManageEvents: () => currentUser && currentUser.role === 'admin',
+
   canViewPage: (page) => {
-    // Example: Volunteers cannot see 'Analytics'
+    if (!currentUser) return false;
     if (page === 'analytics' && currentUser.role === 'volunteer') return false;
-    
-    // Example: Only Admin/Sponsor team can see 'Sponsors'
-    if (page === 'sponsors' && !Permissions.canManageSponsors()) {
-      // We'll allow viewing for this demo, but hide editing.
-      // To block the page entirely:
-      // if (page === 'sponsors' && currentUser.role === 'volunteer' && !Permissions.canManageSponsors()) return false;
-    }
-    return true; // Default allow
+    return true;
   }
 };
 
-// --- 4. Data Filtering ---
-
-/**
- * Gets the list of tasks visible to the current user based on their role.
- * Admin: Sees all tasks.
- * Team Lead: Sees all tasks for their team.
- * Volunteer: Sees ONLY tasks assigned directly to them.
- */
+// ----------------- DATA FILTERS -----------------
 function getVisibleTasks() {
-  const allTasks = Object.values(dbData.tasks);
-  
-  if (currentUser.role === 'admin') {
-    return allTasks;
-  }
-  
-  if (currentUser.role === 'team_lead') {
-    return allTasks.filter(task => task.teamId === currentUser.teamId);
-  }
-  
-  if (currentUser.role === 'volunteer') {
-    return allTasks.filter(task => task.assigneeId === currentUser.uid);
-  }
-  
-  return []; // Should not happen
+  const allTasks = getObjectValues(dbData.tasks);
+
+  if (!currentUser) return [];
+  if (currentUser.role === 'admin') return allTasks;
+  if (currentUser.role === 'team_lead') return allTasks.filter(task => task.teamId === currentUser.teamId);
+  if (currentUser.role === 'volunteer') return allTasks.filter(task => task.assigneeId === currentUser.uid);
+  return [];
 }
 
-// --- 5. Page Navigation & Rendering ---
-
+// ----------------- NAV & RENDER -----------------
 function navigateToPage(page, isRefresh = false) {
-  // Check if user is allowed to see this page
+  if (!currentUser) {
+    showLoginPage();
+    return;
+  }
+
   if (!isRefresh && !Permissions.canViewPage(page)) {
     alert("You do not have permission to view this page.");
     return;
   }
-  
-  if (!isRefresh) {
-    currentPage = page;
-  }
-  
-  // Update active nav item
+
+  if (!isRefresh) currentPage = page;
+
   document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.toggle('active', item.dataset.page === page);
   });
-  
-  // Render page content
+
   const pageContent = document.getElementById('pageContent');
-  
-  // Show loading spinner during re-renders
-  if (isRefresh) {
-    pageContent.style.opacity = '0.5';
-  } else {
+  if (!isRefresh) {
     pageContent.innerHTML = `<p>Loading ${page}...</p>`;
+  } else {
+    pageContent.style.opacity = '0.5';
   }
 
-  // A slight delay to allow the DOM to update and data to be ready
-  // This makes the real-time updates feel smoother
   setTimeout(() => {
-    switch(page) {
-      case 'dashboard':
-        renderDashboard(pageContent);
-        break;
-      case 'teams':
-        renderTeams(pageContent);
-        break;
-      case 'events':
-        renderEvents(pageContent);
-        break;
-      case 'tasks':
-        renderTasks(pageContent);
-        break;
-      case 'sponsors':
-        renderSponsors(pageContent);
-        break;
-      case 'logistics':
-        renderLogistics(pageContent);
-        break;
-      case 'communication':
-        renderCommunication(pageContent);
-        break;
-      case 'analytics':
-        renderAnalytics(pageContent);
-        break;
+    switch (page) {
+      case 'dashboard': renderDashboard(pageContent); break;
+      case 'teams': renderTeams(pageContent); break;
+      case 'events': renderEvents(pageContent); break;
+      case 'tasks': renderTasks(pageContent); break;
+      case 'sponsors': renderSponsors(pageContent); break;
+      case 'logistics': renderLogistics(pageContent); break;
+      case 'communication': renderCommunication(pageContent); break;
+      case 'analytics': renderAnalytics(pageContent); break;
       default:
         pageContent.innerHTML = `<h2>Page not found: ${page}</h2>`;
     }
     pageContent.style.opacity = '1';
-  }, 50); // 50ms throttle
+  }, 50);
 }
 
-// --- Page Render Functions (Now Role-Aware) ---
-
-// Dashboard Page
+// ---------- RENDER: Dashboard ----------
 function renderDashboard(container) {
-  // Get tasks *visible* to this user
   const tasks = getVisibleTasks();
   const progress = calculateProgress(tasks);
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.status === 'Done').length;
   const activeEvents = Object.keys(dbData.events).length;
   const totalMembers = Object.keys(dbData.users).length;
-  
+
   const urgentTasks = tasks
     .filter(t => t.status !== 'Done' && isUrgent(t.dueDate))
     .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
     .slice(0, 5);
-  
+
   container.innerHTML = `
     <div class="welcome-banner">
       <div class="welcome-content">
         <h1 class="welcome-title">Welcome back, ${currentUser.name}!</h1>
         <span class="role-badge">${currentUser.role.replace('_', ' ')}</span>
-        <p>Your tasks are waiting. Let's make it amazing!</p>
+        <p>Let's make NEXERA2k25 a huge success!</p>
         <div class="quick-actions">
           ${Permissions.canManageTask(null) ? `<button class="btn" onclick="openTaskModal()">+ Create Task</button>` : ''}
-          ${Permissions.canCreateEvent() ? `<button class="btn" onclick="openCreateEventModal()">+ Add Event</button>` : ''}
+          ${Permissions.canManageEvents() ? `<button class="btn" onclick="openEventModal()">+ Add Event</button>` : ''}
           <button class="btn" onclick="navigateToPage('tasks')">View All My Tasks</button>
         </div>
       </div>
     </div>
-    
+
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon bg-1">✓</div>
@@ -329,13 +381,13 @@ function renderDashboard(container) {
       <div class="stat-card">
         <div class="stat-icon bg-4">👥</div>
         <div class="stat-info">
-          <div class="stat-label">Team Members</div>
+          <div class="stat-label">Total Members</div>
           <div class="stat-value">${totalMembers}</div>
         </div>
       </div>
       ` : ''}
     </div>
-    
+
     <div class="grid-2">
       <div class="tasks-section">
         <div class="section-header">
@@ -343,27 +395,25 @@ function renderDashboard(container) {
           <button class="btn btn--sm" onclick="navigateToPage('tasks')">View All</button>
         </div>
         <div class="task-list">
-          ${urgentTasks.length === 0 ? '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-24);">No urgent tasks</p>' : urgentTasks.map(task => `
-              <div class="task-item" onclick="openTaskDetailModal('${task.id}')">
-                <div class="task-priority ${task.priority.toLowerCase()}"></div>
-                <div class="task-details">
-                  <div class="task-title">${task.title}</div>
-                  <div class="task-meta">
-                    <span class="task-assignee">👤 ${getUserById(task.assigneeId).name}</span>
-                    <span class="status status--info">⚡ ${getTeamById(task.teamId).icon} ${getTeamById(task.teamId).name}</span>
-                    <span class="task-due-date ${isUrgent(task.dueDate) ? 'urgent' : ''}">📅 ${formatDate(task.dueDate)}</span>
-                  </div>
+          ${urgentTasks.length === 0 ? '<p style="text-align:center;color:var(--color-text-secondary);padding:var(--space-24);">No urgent tasks</p>' : urgentTasks.map(task => `
+            <div class="task-item" onclick="openTaskDetailModal('${task.id}')">
+              <div class="task-priority ${task.priority ? task.priority.toLowerCase() : ''}"></div>
+              <div class="task-details">
+                <div class="task-title">${task.title}</div>
+                <div class="task-meta">
+                  <span class="task-assignee">👤 ${getUserById(task.assigneeId).name}</span>
+                  <span class="status status--info">⚡ ${getTeamById(task.teamId).icon} ${getTeamById(task.teamId).name}</span>
+                  <span class="task-due-date ${isUrgent(task.dueDate) ? 'urgent' : ''}">📅 ${formatDate(task.dueDate)}</span>
                 </div>
               </div>
-            `).join('')}
+            </div>
+          `).join('')}
         </div>
       </div>
-      
+
       ${currentUser.role !== 'volunteer' ? `
       <div class="progress-section">
-        <div class="section-header">
-          <h3 class="section-title">Team Progress</h3>
-        </div>
+        <div class="section-header"><h3 class="section-title">Team Progress</h3></div>
         <div class="team-progress-list">
           ${getObjectValues(dbData.teams).map((team, index) => {
             const teamProgress = calculateTeamProgress(team.id);
@@ -384,7 +434,7 @@ function renderDashboard(container) {
       </div>
       ` : `
       <div class="progress-section">
-        <h3 class="section-title">Symphony '25</h3>
+        <h3 class="section-title">NEXERA2k25</h3>
         <p>Welcome to the team! Your assigned tasks will appear here and on the 'Tasks' page.</p>
         <p>Thank you for volunteering!</p>
       </div>
@@ -393,48 +443,35 @@ function renderDashboard(container) {
   `;
 }
 
-// Tasks Page (Kanban View)
+// ---------- RENDER: Tasks (Kanban) ----------
 function renderTasks(container) {
-  const tasks = getVisibleTasks(); // Get ONLY the tasks user is allowed to see
-  
+  const tasks = getVisibleTasks();
   const todoTasks = tasks.filter(t => t.status === 'To Do');
   const inProgressTasks = tasks.filter(t => t.status === 'In Progress');
   const doneTasks = tasks.filter(t => t.status === 'Done');
 
   container.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-24);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-24);">
       <h2>Tasks</h2>
       ${Permissions.canManageTask(null) ? `<button class="btn btn--primary" onclick="openTaskModal()">+ Create Task</button>` : ''}
     </div>
-    
     <div class="kanban-board">
       <div class="kanban-column">
-        <div class="kanban-header todo">
-          <span class="kanban-title">To Do</span>
-          <span class="kanban-count">${todoTasks.length}</span>
-        </div>
+        <div class="kanban-header todo"><span class="kanban-title">To Do</span><span class="kanban-count">${todoTasks.length}</span></div>
         <div class="kanban-cards">
-          ${todoTasks.map(task => renderKanbanCard(task)).join('')}
+          ${todoTasks.length === 0 ? '<p class="kanban-empty">No tasks</p>' : todoTasks.map(task => renderKanbanCard(task)).join('')}
         </div>
       </div>
-      
       <div class="kanban-column">
-        <div class="kanban-header inprogress">
-          <span class="kanban-title">In Progress</span>
-          <span class="kanban-count">${inProgressTasks.length}</span>
-        </div>
+        <div class="kanban-header inprogress"><span class="kanban-title">In Progress</span><span class="kanban-count">${inProgressTasks.length}</span></div>
         <div class="kanban-cards">
-          ${inProgressTasks.map(task => renderKanbanCard(task)).join('')}
+          ${inProgressTasks.length === 0 ? '<p class="kanban-empty">No tasks</p>' : inProgressTasks.map(task => renderKanbanCard(task)).join('')}
         </div>
       </div>
-      
       <div class="kanban-column">
-        <div class="kanban-header done">
-          <span class="kanban-title">Done</span>
-          <span class="kanban-count">${doneTasks.length}</span>
-        </div>
+        <div class="kanban-header done"><span class="kanban-title">Done</span><span class="kanban-count">${doneTasks.length}</span></div>
         <div class="kanban-cards">
-          ${doneTasks.map(task => renderKanbanCard(task)).join('')}
+          ${doneTasks.length === 0 ? '<p class="kanban-empty">No tasks</p>' : doneTasks.map(task => renderKanbanCard(task)).join('')}
         </div>
       </div>
     </div>
@@ -443,48 +480,46 @@ function renderTasks(container) {
 
 function renderKanbanCard(task) {
   const assignee = getUserById(task.assigneeId);
-  // When a card is clicked, open the detail/edit modal
+  const team = getTeamById(task.teamId);
   return `
     <div class="kanban-card" onclick="openTaskDetailModal('${task.id}')">
       <div class="kanban-card-title">${task.title}</div>
-      <div class="kanban-card-description">${task.description}</div>
+      <div class="kanban-card-description">${task.description || ''}</div>
+      ${currentUser.role === 'admin' ? `<div class="kanban-card-team">${team.icon} ${team.name}</div>` : ''}
       <div class="kanban-card-footer">
-        <span class="status status--${task.priority.toLowerCase()}">${task.priority}</span>
-        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">👤 ${assignee.name.split(' ')[0]}</span>
+        <span class="status status--${(task.priority || 'todo').toLowerCase()}">${task.priority || 'Todo'}</span>
+        <span style="font-size:var(--font-size-sm);color:var(--color-text-secondary);">👤 ${assignee.name.split(' ')[0]}</span>
       </div>
-      <div style="margin-top: var(--space-8); font-size: var(--font-size-xs); color: var(--color-text-secondary);">📅 ${formatDate(task.dueDate)}</div>
+      <div style="margin-top:var(--space-8);font-size:var(--font-size-xs);color:var(--color-text-secondary);${isUrgent(task.dueDate) ? 'color:var(--color-error);font-weight:bold;' : ''}">📅 ${formatDate(task.dueDate)}</div>
     </div>
   `;
 }
 
-// Teams Page
+// ---------- RENDER: Teams ----------
 function renderTeams(container) {
-  // Volunteers do not need to see the team management page
-  if (currentUser.role === 'volunteer') {
-    container.innerHTML = '<h2>My Team</h2><p>Page not applicable for this role.</p>';
-    return;
-  }
-
   container.innerHTML = `
-    <h2 style="margin-bottom: var(--space-24);">Teams</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-24);">
+      <h2>Teams</h2>
+      ${Permissions.canManageTeams() ? `<button class="btn btn--primary" onclick="openTeamModal()">+ Manage Teams</button>` : ''}
+    </div>
     <div class="grid-3">
       ${getObjectValues(dbData.teams).map(team => {
         const lead = getUserById(team.leadId);
-        const teamTasks = getObjectValues(dbData.tasks).filter(t => t.teamId === team.id);
         const teamProgress = calculateTeamProgress(team.id);
+        const teamTasks = getObjectValues(dbData.tasks).filter(t => t.teamId === team.id);
         const todoCount = teamTasks.filter(t => t.status === 'To Do').length;
         const doneCount = teamTasks.filter(t => t.status === 'Done').length;
-        
+
         return `
           <div class="card">
             <div class="card__body">
-              <div style="font-size: 48px; text-align: center;">${team.icon}</div>
-              <h3 style="text-align: center;">${team.name}</h3>
-              <p style="text-align: center; color: var(--color-text-secondary);">Lead: ${lead.name}</p>
-              <div class="progress-bar-container" style="margin: 16px 0;">
+              <div style="font-size:48px;text-align:center;">${team.icon}</div>
+              <h3 style="text-align:center;">${team.name}</h3>
+              <p style="text-align:center;color:var(--color-text-secondary);">Lead: ${lead.name}</p>
+              <div class="progress-bar-container" style="margin:16px 0;">
                 <div class="progress-bar color-1" style="width: ${teamProgress}%"></div>
               </div>
-              <div style="display: flex; justify-content: space-between;">
+              <div style="display:flex;justify-content:space-between;">
                 <span class="status status--todo">${todoCount} To Do</span>
                 <span class="status status--done">${doneCount} Done</span>
               </div>
@@ -496,346 +531,163 @@ function renderTeams(container) {
   `;
 }
 
-// Other Render Functions (Events, Sponsors, etc.) - Stubbed for brevity
-// These would follow the same pattern of reading from `dbData`
-function renderEvents(container) { container.innerHTML = '<h2>Events</h2><p>Render function to be built.</p>'; }
-function renderSponsors(container) { container.innerHTML = '<h2>Sponsors</h2><p>Render function to be built.</sponsors>'; }
-function renderLogistics(container) { container.innerHTML = '<h2>Logistics</h2><p>Render function to be built.</p>'; }
-function renderCommunication(container) { container.innerHTML = '<h2>Communication</h2><p>Render function to be built.</p>'; }
-function renderAnalytics(container) { container.innerHTML = '<h2>Analytics</h2><p>Render function to be built.</p>'; }
-
-
-// --- 6. Modal & Action Handlers (Writing to DB) ---
-
-/**
- * Opens the task detail modal.
- * This modal allows EITHER full editing (Admins/Leads) OR only status updates (Volunteers).
- */
-function openTaskDetailModal(taskId) {
-  const task = dbData.tasks[taskId];
-  if (!task) {
-    console.error("Task not found!");
-    return;
-  }
-  
-  // Check permissions
-  const canManage = Permissions.canManageTask(task);
-  const canUpdateStatus = Permissions.canUpdateTaskStatus(task);
-  
-  if (!canUpdateStatus) {
-    // User has no permissions, show a read-only view
-    alert("You do not have permission to edit this task.");
-    // (A read-only modal could be shown here)
-    return;
-  }
-  
-  if (canManage) {
-    // If user is Admin or Team Lead, show the full edit modal
-    openTaskModal(taskId);
-  } else {
-    // If user is a Volunteer, show the simple status-update modal
-    openStatusUpdateModal(taskId);
-  }
-}
-
-/**
- * Opens the FULL task editor (for Admins and Team Leads).
- */
-function openTaskModal(taskId = null) {
-  const task = taskId ? dbData.tasks[taskId] : null;
-  const isEditing = !!task;
-
-  // Get users for the dropdown
-  // If Admin, show all users. If Lead, show only their team members.
-  let assignableUsers = getObjectValues(dbData.users);
-  if (currentUser.role === 'team_lead') {
-    assignableUsers = assignableUsers.filter(u => u.teamId === currentUser.teamId);
-  }
-  
-  // Get teams for the dropdown (Admin only)
-  let teamOptions = '';
-  if (currentUser.role === 'admin') {
-    teamOptions = `
-      <div class="form-group">
-        <label class="form-label">Team</label>
-        <select class="form-control" id="taskTeam" required>
-          ${getObjectValues(dbData.teams).map(t => `<option value="${t.id}" ${task && task.teamId === t.id ? 'selected' : ''}>${t.icon} ${t.name}</option>`).join('')}
-        </select>
-      </div>
-    `;
-  }
-
-  showModal(isEditing ? 'Edit Task' : 'Create New Task', `
-    <form id="taskForm" data-id="${taskId || ''}">
-      <div class="form-group">
-        <label class="form-label">Task Title</label>
-        <input type="text" class="form-control" id="taskTitle" value="${task ? task.title : ''}" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <textarea class="form-control" id="taskDescription" rows="3" required>${task ? task.description : ''}</textarea>
-      </div>
-      
-      ${teamOptions} <div class="form-group">
-        <label class="form-label">Assignee</label>
-        <select class="form-control" id="taskAssignee" required>
-          ${assignableUsers.map(u => `<option value="${u.uid}" ${task && task.assigneeId === u.uid ? 'selected' : ''}>${u.name}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Due Date</label>
-        <input type="date" class="form-control" id="taskDueDate" value="${task ? task.dueDate : ''}" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Priority</label>
-        <select class="form-control" id="taskPriority" required>
-          <option value="High" ${task && task.priority === 'High' ? 'selected' : ''}>High</option>
-          <option value="Medium" ${!task || task.priority === 'Medium' ? 'selected' : ''}>Medium</option>
-          <option value="Low" ${task && task.priority === 'Low' ? 'selected' : ''}>Low</option>
-        </select>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn--outline" onclick="closeModal()">Cancel</button>
-        ${isEditing ? `<button type="button" class="btn btn--secondary" style="margin-right: auto;" onclick="handleDeleteTask('${taskId}')">Delete Task</button>` : ''}
-        <button type="submit" class="btn btn--primary">${isEditing ? 'Update Task' : 'Create Task'}</button>
-      </div>
-    </form>
-  `);
-  
-  // Attach submit handler
-  document.getElementById('taskForm').onsubmit = handleSaveTask;
-}
-
-/**
- * Opens a simple modal for Volunteers to update status.
- */
-function openStatusUpdateModal(taskId) {
-  const task = dbData.tasks[taskId];
-  
-  showModal('Update Task Status', `
-    <h3 style="margin-bottom: 16px;">${task.title}</h3>
-    <p>${task.description}</p>
-    <div class="form-group" style="margin-top: 24px;">
-      <label class="form-label">Set Status</label>
-      <select class="form-control" id="taskStatusSelect">
-        <option value="To Do" ${task.status === 'To Do' ? 'selected' : ''}>To Do</option>
-        <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-        <option value="Done" ${task.status === 'Done' ? 'selected' : ''}>Done</option>
-      </select>
+// ---------- RENDER: Events ----------
+function renderEvents(container) {
+  const events = getObjectValues(dbData.events);
+  container.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-24);">
+      <h2>Events</h2>
+      ${Permissions.canManageEvents() ? `<button class="btn btn--primary" onclick="openEventModal()">+ Add Event</button>` : ''}
     </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn--outline" onclick="closeModal()">Cancel</button>
-      <button type="button" class="btn btn--primary" onclick="handleUpdateStatus('${taskId}')">Update Status</button>
-    </div>
-  `);
-}
 
-/**
- * Saves task data (Create/Update) to Firebase.
- */
-function handleSaveTask(event) {
-  event.preventDefault();
-  const form = event.target;
-  
-  const taskId = form.dataset.id || db.ref('tasks').push().key; // Get new key if needed
-  const existingTask = dbData.tasks[taskId] || {};
-
-  const taskData = {
-    id: taskId,
-    title: document.getElementById('taskTitle').value,
-    description: document.getElementById('taskDescription').value,
-    assigneeId: document.getElementById('taskAssignee').value,
-    dueDate: document.getElementById('taskDueDate').value,
-    priority: document.getElementById('taskPriority').value,
-    // If admin, use the form's team value. If lead, use their own teamId.
-    teamId: currentUser.role === 'admin' ? document.getElementById('taskTeam').value : currentUser.teamId,
-    // Preserve existing status on edit, or default to 'To Do'
-    status: existingTask.status || 'To Do',
-    updatedAt: new Date().toISOString()
-  };
-  
-  if (!existingTask.createdAt) {
-    taskData.createdAt = new Date().toISOString();
-  }
-
-  // Final permission check
-  if (!Permissions.canManageTask(taskData)) {
-    alert("Permission denied. Your role cannot create or edit tasks for this team.");
-    return;
-  }
-  
-  // Write to Firebase
-  db.ref(`tasks/${taskId}`).update(taskData)
-    .then(() => {
-      console.log("Task saved:", taskId);
-      closeModal();
-      // No need to refresh, real-time listener will handle it!
-    })
-    .catch(error => {
-      console.error("Error saving task:", error);
-      alert("Error saving task: " + error.message);
-    });
-}
-
-/**
- * Updates *only* the status of a task.
- */
-function handleUpdateStatus(taskId) {
-  const newStatus = document.getElementById('taskStatusSelect').value;
-  const task = dbData.tasks[taskId];
-  
-  // Final permission check
-  if (!Permissions.canUpdateTaskStatus(task)) {
-    alert("Permission denied.");
-    return;
-  }
-  
-  // Write *only* the status
-  db.ref(`tasks/${taskId}/status`).set(newStatus)
-    .then(() => {
-      console.log("Status updated:", taskId);
-      closeModal();
-      // No need to refresh, real-time listener will handle it!
-    })
-    .catch(error => {
-      console.error("Error updating status:", error);
-      alert("Error updating status: " + error.message);
-    });
-}
-
-/**
- * Deletes a task from Firebase.
- */
-function handleDeleteTask(taskId) {
-  const task = dbData.tasks[taskId];
-  
-  if (!Permissions.canManageTask(task)) {
-    alert("You do not have permission to delete this task.");
-    return;
-  }
-  
-  if (confirm(`Are you sure you want to delete "${task.title}"?`)) {
-    db.ref(`tasks/${taskId}`).remove()
-      .then(() => {
-        console.log("Task deleted:", taskId);
-        closeModal();
-        // No need to refresh, real-time listener will handle it!
-      })
-      .catch(error => {
-        console.error("Error deleting task:", error);
-        alert("Error deleting task: " + error.message);
-      });
-  }
-}
-
-// Stub for creating an event
-function openCreateEventModal() {
-  alert("Event creation modal not implemented.");
-}
-
-
-// --- 7. Utility & Helper Functions ---
-
-// Updates the user avatar/name in the sidebar
-function updateUserProfileUI() {
-  const initials = getInitials(currentUser.name);
-  document.getElementById('sidebarAvatar').textContent = initials;
-  document.getElementById('headerAvatar').textContent = initials;
-  document.getElementById('sidebarUserName').textContent = currentUser.name;
-  document.getElementById('sidebarUserRole').textContent = currentUser.role.replace('_', ' ');
-}
-
-// Countdown Timer
-function startCountdown() {
-  const interval = setInterval(() => {
-    const now = new Date();
-    const diff = SYMPOSIUM_DATE - now;
-    
-    if (diff <= 0 || !document.getElementById('countdownDays')) {
-      clearInterval(interval);
-      return;
-    }
-    
-    document.getElementById('countdownDays').textContent = Math.floor(diff / (1000 * 60 * 60 * 24));
-    document.getElementById('countdownHours').textContent = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    document.getElementById('countdownMinutes').textContent = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    document.getElementById('countdownSeconds').textContent = Math.floor((diff % (1000 * 60)) / 1000);
-  }, 1000);
-}
-
-// Data Getters (safe access from cache)
-function getObjectValues(obj) { return obj ? Object.values(obj) : []; }
-function getUserById(uid) { return dbData.users[uid] || { name: 'Unknown' }; }
-function getTeamById(id) { return dbData.teams[id] || { name: 'Unknown', icon: '?' }; }
-
-function getInitials(name = "") { return name.split(' ').map(n => n[0]).join('').toUpperCase() || '?'; }
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(date);
-}
-function isUrgent(dueDate) {
-  const diff = new Date(dueDate) - new Date();
-  return (diff / (1000 * 60 * 60 * 24)) <= 3;
-}
-
-// Progress Calculators
-function calculateProgress(tasks) {
-  const total = tasks.length;
-  const completed = tasks.filter(t => t.status === 'Done').length;
-  return total > 0 ? Math.round((completed / total) * 100) : 0;
-}
-function calculateTeamProgress(teamId) {
-  const teamTasks = getObjectValues(dbData.tasks).filter(t => t.teamId === teamId);
-  return calculateProgress(teamTasks);
-}
-
-// Modal Functions
-function showModal(title, content) {
-  document.getElementById('modalContainer').innerHTML = `
-    <div class="modal-overlay" onclick="closeModalOnOverlay(event)">
-      <div class="modal">
-        <div class="modal-header">
-          <h3 class="modal-title">${title}</h3>
-          <button class="modal-close" onclick="closeModal()">✕</button>
+    ${events.length === 0 ? `
+      <div class="card">
+        <div class="card__body text-center">
+          <p>No events have been added yet.</p>
+          ${Permissions.canManageEvents() ? '<p>Click the button above to add the first event.</p>' : '<p>Events will be added by an admin soon.</p>'}
         </div>
-        <div class="modal-body">${content}</div>
       </div>
-    </div>
+    ` : `
+      <div class="data-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Event Name</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th>Venue</th>
+              ${Permissions.canManageEvents() ? '<th>Actions</th>' : ''}
+            </tr>
+          </thead>
+          <tbody>
+            ${events.map(event => `
+              <tr>
+                <td><strong>${event.name}</strong></td>
+                <td><span class="status status--info">${event.type}</span></td>
+                <td>${formatDate(event.date)}</td>
+                <td>${event.venue || 'TBD'}</td>
+                ${Permissions.canManageEvents() ? `
+                  <td>
+                    <div class="table-actions">
+                      <button class="icon-btn" onclick="openEventModal('${event.id}')" title="Edit">✏️</button>
+                      <button class="icon-btn" onclick="handleDelete('events', '${event.id}', 'event')" title="Delete">🗑️</button>
+                    </div>
+                  </td>
+                ` : ''}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `}
   `;
 }
-function closeModal() { document.getElementById('modalContainer').innerHTML = ''; }
-function closeModalOnOverlay(event) { if (event.target.classList.contains('modal-overlay')) closeModal(); }
 
-// Mock Notification Functions
-function toggleNotificationPanel() { alert("Notification panel not implemented."); }
-function markAllNotificationsRead() { }
+// ---------- RENDER: Sponsors ----------
+function renderSponsors(container) {
+  const sponsors = getObjectValues(dbData.sponsors);
+  container.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-24);">
+      <h2>Sponsors</h2>
+      ${Permissions.canManageSponsors() ? `<button class="btn btn--primary" onclick="openSponsorModal()">+ Add Sponsor</button>` : ''}
+    </div>
+    ${sponsors.length === 0 ? `
+      <div class="card"><div class="card__body text-center"><p>No sponsors added yet.</p></div></div>
+    ` : `
+      <div class="grid-3">
+        ${sponsors.map(s => `
+          <div class="card">
+            <div class="card__body">
+              <h3>${s.name}</h3>
+              <p>${s.tier || 'General'}</p>
+              <div style="margin-top:12px;">
+                ${Permissions.canManageSponsors() ? `<button class="btn btn--sm" onclick="handleDelete('sponsors','${s.id}','sponsor')">Delete</button>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `}
+  `;
+}
 
+// ---------- RENDER: Logistics / Communication / Analytics (simple placeholders) ----------
+function renderLogistics(container) {
+  const logistics = getObjectValues(dbData.logistics);
+  container.innerHTML = `<h2>Logistics</h2>
+    ${logistics.length === 0 ? '<p>No logistics items</p>' : '<p>Logistics items loaded</p>'}`;
+}
 
-// --- 8. Event Listeners (DOM Ready) ---
+function renderCommunication(container) {
+  container.innerHTML = `<h2>Communication</h2><p>Communication panel coming soon.</p>`;
+}
 
-document.addEventListener('DOMContentLoaded', function() {
-  // Login form
-  document.getElementById('loginForm').addEventListener('submit', handleLogin);
-  
-  // Navigation
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function(e) {
-      e.preventDefault();
-      navigateToPage(this.dataset.page);
-    });
-  });
-  
-  // Logout
-  document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-  
-  // Notification bell
-  document.getElementById('notificationBell').addEventListener('click', toggleNotificationPanel);
-  
-  // Mark all read button
-  document.getElementById('markAllRead').addEventListener('click', markAllNotificationsRead);
-  
-  // Sidebar toggle for mobile
-  document.getElementById('sidebarToggle').addEventListener('click', function() {
-    document.getElementById('sidebar').classList.toggle('open');
-  });
-});
+function renderAnalytics(container) {
+  container.innerHTML = `<h2>Analytics</h2><p>Analytics available to leads and admins.</p>`;
+}
+
+// ---------- MISC UI Helpers ----------
+function updateUserProfileUI() {
+  if (!currentUser) return;
+  const sidebarUserName = document.getElementById('sidebarUserName');
+  const sidebarUserRole = document.getElementById('sidebarUserRole');
+  const sidebarAvatar = document.getElementById('sidebarAvatar');
+  const headerAvatar = document.getElementById('headerAvatar');
+
+  if (sidebarUserName) sidebarUserName.textContent = currentUser.name;
+  if (sidebarUserRole) sidebarUserRole.textContent = currentUser.role.replace('_', ' ');
+  if (sidebarAvatar) sidebarAvatar.textContent = currentUser.name ? currentUser.name[0].toUpperCase() : 'U';
+  if (headerAvatar) headerAvatar.textContent = currentUser.name ? currentUser.name[0].toUpperCase() : 'U';
+}
+
+function startCountdown() {
+  const daysEl = document.getElementById('countdownDays');
+  const hoursEl = document.getElementById('countdownHours');
+  const minsEl = document.getElementById('countdownMinutes');
+  const secsEl = document.getElementById('countdownSeconds');
+
+  function update() {
+    const now = new Date();
+    const diff = SYMPOSIUM_DATE - now;
+    if (diff <= 0) {
+      daysEl.textContent = '0';
+      hoursEl.textContent = '0';
+      minsEl.textContent = '0';
+      secsEl.textContent = '0';
+      return;
+    }
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+
+    daysEl.textContent = days;
+    hoursEl.textContent = hours;
+    minsEl.textContent = minutes;
+    secsEl.textContent = seconds;
+  }
+
+  update();
+  setInterval(update, 1000);
+}
+
+// ---------- CRUD helpers (simple) ----------
+function handleDelete(node, id, label) {
+  if (!Permissions.canManageEvents() && node === 'events') {
+    alert('Insufficient permissions');
+    return;
+  }
+  if (!confirm(`Delete ${label}?`)) return;
+  db.ref(`${node}/${id}`).remove().then(() => {
+    console.log(`${label} ${id} removed`);
+  }).catch(err => console.error('Delete error', err));
+}
+
+// Placeholder modals (implement real modals in your app)
+function openTaskModal() { alert('Open create/edit task modal (implement UI)'); }
+function openEventModal(id = null) { alert('Open event modal (implement UI)'); }
+function openTeamModal() { alert('Open team modal (implement UI)'); }
+function openSponsorModal() { alert('Open sponsor modal (implement UI)'); }
+function openTaskDetailModal(id) { alert(`Open task detail for ${id} (implement UI)`); }
+
+// ----------------- END OF FILE -----------------

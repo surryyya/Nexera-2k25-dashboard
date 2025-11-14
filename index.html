@@ -3,23 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Symphony '25 - Symposium Dashboard</title>
+    <title>NEXERA2k25 - Symposium Dashboard</title>
     <link rel="stylesheet" href="style.css">
 
+    <!-- Firebase SDK scripts -->
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
 
+    <!-- Your Firebase Configuration -->
     <script src="firebase-config.js"></script>
 </head>
 
 <body>
+    <!-- Login Page -->
     <div id="loginPage" class="login-page">
         <div class="login-container">
             <div class="login-left">
                 <div class="login-brand">
-                    <div class="brand-icon">🎵</div>
-                    <h1 class="brand-title">Symphony '25</h1>
+                    <div class="brand-icon">🚀</div>
+                    <h1 class="brand-title">NEXERA2k25</h1>
                     <p class="brand-tagline">ECE College of Engineering</p>
                     <p class="brand-subtitle">Event Management Dashboard</p>
                 </div>
@@ -53,25 +56,18 @@
                         <button type="submit" id="loginButton" class="btn btn--primary btn--full-width">Sign In</button>
 
                     </form> 
-                    <div class="demo-users">
-                        <p class="demo-title">Demo Accounts:</p>
-                        <div class="demo-list">
-                            <span class="demo-badge">admin@cit.edu.in</span>
-                            <span class="demo-badge">teamlead@cit.edu.in</span>
-                            <span class="demo-badge">volunteer@cit.edu.in</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Main Dashboard -->
     <div id="mainDashboard" class="dashboard" style="display: none;">
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-brand">
-                    <span class="brand-icon">🎵</span>
-                    <span class="brand-text">Symphony '25</span>
+                    <span class="brand-icon">🚀</span>
+                    <span class="brand-text">NEXERA2k25</span>
                 </div>
                 <button id="sidebarToggle" class="sidebar-toggle">☰</button>
             </div>
@@ -113,18 +109,19 @@
                 <div class="user-profile">
                     <div class="user-avatar" id="sidebarAvatar">A</div>
                     <div class="user-info">
-                        <div class="user-name" id="sidebarUserName">Admin</div>
-                        <div class="user-role" id="sidebarUserRole">Admin</div>
+                        <div class="user-name" id="sidebarUserName">Loading...</div>
+                        <div class="user-role" id="sidebarUserRole">Loading...</div>
                     </div>
                 </div>
                 <button id="logoutBtn" class="btn btn--secondary btn--sm btn--full-width">Logout</button>
             </div>
         </aside>
 
+        <!-- Main Content -->
         <div class="main-content">
             <header class="header">
                 <div class="header-left">
-                    <h1 class="header-title">Symphony '25 Symposium</h1>
+                    <h1 class="header-title">NEXERA2k25 - National Level Symposium</h1>
                 </div>
                 <div class="header-center">
                     <div class="countdown" id="countdown">
@@ -149,7 +146,7 @@
                 <div class="header-right">
                     <div class="notification-bell" id="notificationBell">
                         <span class="bell-icon">🔔</span>
-                        <span class="notification-badge" id="notificationBadge">0</span>
+                        <span class="notification-badge hidden" id="notificationBadge">0</span>
                     </div>
                     <div class="user-menu">
                         <div class="user-avatar" id="headerAvatar">A</div>
@@ -157,9 +154,11 @@
                 </div>
             </header>
 
+            <!-- Page Content -->
             <div id="pageContent" class="page-content"></div>
         </div>
 
+        <!-- Notification Panel -->
         <div id="notificationPanel" class="notification-panel">
             <div class="notification-header">
                 <h3>Notifications</h3>
@@ -168,6 +167,7 @@
             <div id="notificationList" class="notification-list"></div>
         </div>
 
+        <!-- Modal Container -->
         <div id="modalContainer"></div>
     </div>
 
