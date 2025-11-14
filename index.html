@@ -3,44 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexera Dashboard</title>
-
+    <title>NEXERA2k25 - Symposium Dashboard</title>
     <link rel="stylesheet" href="style.css">
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDK scripts -->
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
 
-    <!-- Firebase Config -->
+    <!-- Your Firebase Configuration -->
     <script src="firebase-config.js"></script>
-
-    <!-- Load Local JSON Database -->
-    <script src="database-import.json" type="application/json" id="localJson"></script>
-
-    <script>
-        let localDB = {};
-
-        window.addEventListener("DOMContentLoaded", () => {
-            const jsonEl = document.getElementById("localJson");
-
-            if (jsonEl) {
-                try {
-                    localDB = JSON.parse(jsonEl.textContent);
-                    console.log("LocalDB Loaded:", localDB);
-                } catch (e) {
-                    console.error("Error parsing JSON:", e);
-                }
-            } else {
-                console.error("database-import.json NOT found!");
-            }
-        });
-    </script>
-
-    <!-- Main App Script -->
-    <script src="app.js" defer></script>
 </head>
-
 
 <body>
     <!-- Login Page -->
@@ -198,6 +171,6 @@
         <div id="modalContainer"></div>
     </div>
 
- 
+    <script src="app.js"></script>
 </body>
 </html>
