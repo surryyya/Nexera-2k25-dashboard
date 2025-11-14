@@ -12,7 +12,148 @@
   <nav class="sidebar">
     <a href="#" class="active">Home</a>
     <a href="#">Browse</a>
-    <a href="#">Radio</a>
+    <a href="#">Radio</a><!-- Start of dashboard HTML snippet -->
+<div class="dashboard">
+  <!-- Sidebar -->
+  <aside class="sidebar card">
+    <div class="brand">
+      <div class="logo">N</div>
+      <div>
+        <h3>NEXERA 2k25</h3>
+        <div class="small">Symposium Dashboard</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-item active" data-page="dashboard">Dashboard</div>
+      <div class="nav-item" data-page="teams">Teams</div>
+      <div class="nav-item" data-page="tasks">Tasks</div>
+      <div class="nav-item" data-page="events">Events</div>
+      <div class="nav-item" data-page="sponsors">Sponsors</div>
+      <div class="nav-item" data-page="logistics">Logistics</div>
+      <div class="nav-item" data-page="analytics">Analytics</div>
+    </nav>
+
+    <div style="margin-top:18px">
+      <div class="small-note">Logged in as <strong id="sidebarUserName">User</strong></div>
+      <div class="small-note">Role: <span id="sidebarUserRole">Admin</span></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="header">
+      <div class="header-left">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <input placeholder="Search tasks, events, members" />
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="btn btn--ghost" id="notificationsBtn">Notifications</button>
+        <div id="headerAvatar" class="logo" style="width:40px;height:40px;border-radius:10px;font-size:15px">U</div>
+      </div>
+    </header>
+
+    <section class="container">
+      <!-- Welcome + quick actions -->
+      <div class="welcome-card card">
+        <div>
+          <h3 class="welcome-title">Welcome back, <span id="welcomeName">Surya</span>!</h3>
+          <div class="small">Manage teams, tasks and events effortlessly.</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <span class="role-badge" id="sidebarRole">Admin</span>
+          <button class="btn btn--primary" onclick="openTaskModal()">+ Create Task</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat card">
+          <div class="icon">🏷</div>
+          <div class="meta"><div class="value" id="statTasks">12</div><div class="small">Your tasks</div></div>
+        </div>
+        <div class="stat card">
+          <div class="icon">📅</div>
+          <div class="meta"><div class="value" id="statEvents">3</div><div class="small">Active events</div></div>
+        </div>
+        <div class="stat card">
+          <div class="icon">👥</div>
+          <div class="meta"><div class="value" id="statMembers">48</div><div class="small">Members</div></div>
+        </div>
+        <div class="stat card">
+          <div class="icon">⏳</div>
+          <div class="meta"><div class="value" id="statProgress">72%</div><div class="small">Overall progress</div></div>
+        </div>
+      </div>
+
+      <!-- Main grid -->
+      <div class="grid-2">
+        <!-- Left: Kanban / tasks -->
+        <div class="card card-section">
+          <h4>Tasks</h4>
+          <div class="kanban" style="margin-top:12px">
+            <div class="column">
+              <div class="column-header"><strong>To Do</strong><span class="small">5</span></div>
+              <div class="kanban-card"><div class="title">Book auditorium</div><div class="meta">Assigned to: Ramya • Due: 10 Feb</div></div>
+              <div class="kanban-card"><div class="title">Design poster</div><div class="meta">Assigned to: Kabilan • Due: 12 Feb</div></div>
+            </div>
+            <div class="column">
+              <div class="column-header"><strong>In Progress</strong><span class="small">3</span></div>
+              <div class="kanban-card"><div class="title">Sponsor outreach</div><div class="meta">Assigned to: Sponsor team • Due: 5 Feb</div></div>
+            </div>
+            <div class="column">
+              <div class="column-header"><strong>Done</strong><span class="small">4</span></div>
+              <div class="kanban-card"><div class="title">Venue confirmation</div><div class="meta">Assigned to: Logistics • Completed</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Events & progress -->
+        <div class="card card-section">
+          <h4>Upcoming Events</h4>
+          <div class="events-list" style="margin-top:12px">
+            <div class="event-item">
+              <div>
+                <div style="font-weight:700">Robotics Workshop</div>
+                <div class="small">Technical • 22 Feb • Coordinator: Dr. X</div>
+              </div>
+              <div style="width:140px">
+                <div class="small">Progress</div>
+                <div class="progress-wrap" aria-hidden="true" style="margin-top:8px">
+                  <div class="progress-fill" style="width:65%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="event-item">
+              <div>
+                <div style="font-weight:700">Coding Hackathon</div>
+                <div class="small">Technical • 25 Feb • Coordinator: Prof. Y</div>
+              </div>
+              <div style="width:140px">
+                <div class="small">Progress</div>
+                <div class="progress-wrap" aria-hidden="true" style="margin-top:8px">
+                  <div class="progress-fill" style="width:40%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:18px">
+            <div class="small-note">Countdown to symposium</div>
+            <div style="font-weight:700;font-size:18px" id="countdown">26 days</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px" class="small-note">Pro tip: Click a task to view details or upload proof.</div>
+    </section>
+  </main>
+</div>
+<!-- End of dashboard HTML snippet -->
+
     <a href="#">Library</a>
     <a href="#">Profile</a>
   </nav>
